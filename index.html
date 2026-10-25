@@ -180,8 +180,9 @@ h3{font-size:clamp(19px,2.3vw,25px);font-weight:800;letter-spacing:-.4px}
 .modal{position:fixed;inset:0;background:rgba(4,7,14,.82);backdrop-filter:blur(8px);z-index:200;
   display:none;align-items:center;justify-content:center;padding:40px}
 .modal.open{display:flex}
-.modal-inner{width:min(900px,92vw);background:var(--panel);border:1px solid var(--line);border-radius:20px;
+.modal-inner{width:min(430px,92vw);max-height:92vh;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:20px;
   overflow:hidden;box-shadow:var(--shadow);animation:pop .3s ease}
+.modal-head{flex-shrink:0}
 @keyframes pop{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
 .modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line)}
 .modal-head .mt{font-weight:800;font-size:18px}
@@ -189,8 +190,8 @@ h3{font-size:clamp(19px,2.3vw,25px);font-weight:800;letter-spacing:-.4px}
 .modal-x{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);
   cursor:pointer;font-size:20px;display:grid;place-items:center;transition:.15s}
 .modal-x:hover{border-color:var(--red);color:var(--red)}
-.vid-stage{aspect-ratio:16/9;background:#05080f;display:grid;place-items:center;position:relative}
-.vid-stage video{width:100%;height:100%;object-fit:contain;background:#05080f}
+.vid-stage{background:#05080f;display:grid;place-items:center;position:relative;overflow:hidden}
+.vid-stage video{max-width:100%;max-height:calc(92vh - 66px);width:auto;height:auto;object-fit:contain;background:#05080f;display:block}
 .vid-ph{text-align:center;color:var(--muted);padding:30px}
 .vid-ph .big{font-size:17px;font-weight:700;color:var(--ink2);margin-bottom:8px}
 .vid-ph code{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:4px 9px;color:var(--blue-l);font-size:13px}
