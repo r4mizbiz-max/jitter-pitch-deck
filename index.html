@@ -1136,61 +1136,15 @@ h3{font-size:clamp(19px,2.3vw,25px);font-weight:800;letter-spacing:-.4px}
     if(sl.id==='auditSlide') renderAuditSlide();
   }
 
-  /* ============ LOCAL AUTHORITY AUDIT ============ */
+  /* ============ LOCAL AUTHORITY AUDIT — real data only, no placeholders ============ */
   var AUDIT=null, auditTimer=null, auditSlideEl=document.getElementById('auditSlide');
-  var EMAIL_ENDPOINT=''; // set to a Formspree URL (https://formspree.io/f/xxxx) to actually deliver emails
   function auditSlideActive(){ return slides[cur]===auditSlideEl; }
-
-  // seeded RNG so the same company always scores the same
-  function strHash(s){ var h=2166136261>>>0; for(var i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
-  function mulberry32(a){ return function(){ a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296; }; }
-  var _rng=Math.random;
-  function ri(mn,mx){ return Math.floor(_rng()*(mx-mn+1))+mn; }
-  function rf(mn,mx){ return _rng()*(mx-mn)+mn; }
   function clamp(v,mn,mx){ return Math.max(mn,Math.min(mx,v)); }
-  function pick(arr){ return arr[Math.floor(_rng()*arr.length)]; }
   function normalizeUrl(w){ if(!w) return ''; w=w.trim(); if(!/^https?:\/\//i.test(w)) w='https://'+w; try{ new URL(w); return w; }catch(e){ return ''; } }
-  function gradeOf(s){ return s>=90?'A':s>=85?'A-':s>=80?'B+':s>=75?'B':s>=70?'B-':s>=65?'C+':s>=60?'C':s>=55?'C-':s>=50?'D+':'D'; }
+  function gradeOf(s){ return s>=90?'A':s>=85?'A-':s>=80?'B+':s>=75?'B':s>=70?'B-':s>=65?'C+':s>=60?'C':s>=55?'C-':s>=50?'D+':s>=45?'D':'F'; }
   function gradeClass(g){ return g.charAt(0)==='A'?'g-a':g.charAt(0)==='B'?'g-b':g.charAt(0)==='C'?'g-c':'g-d'; }
-  function money(n){ return '$'+n.toLocaleString('en-US'); }
+  function money(n){ return '$'+Number(n).toLocaleString('en-US'); }
 
-  function genAudit(company,website,city,niche){
-    _rng=mulberry32(strHash((company+'|'+website).toLowerCase()));
-    city=city||'your area'; niche=(niche||'cabinet refacing').toLowerCase();
-    var compReviews=ri(130,340);
-    var gmb={ claimed:_rng()>0.18, rating:+(rf(3.8,4.5).toFixed(1)), reviews:ri(18,74),
-      compReviews:compReviews, rank:ri(4,11), term:niche+' in '+(city==='your area'?'their city':city),
-      photos:ri(5,26), score:ri(54,72) };
-    var reviews={ rating:gmb.rating, responseRate:ri(8,42), recency:ri(3,9), velocity:pick(['Low','Low','Medium']), score:ri(50,70) };
-    var wg={ visual:ri(56,78), seo:ri(48,72), structure:ri(52,74), mobile:ri(44,70), real:false };
-    wg.overall=Math.round((wg.visual+wg.seo+wg.structure+wg.mobile)/4);
-    var social={ active:_rng()>0.2, postsPerMonth:ri(1,6), lastPost:ri(2,8), runningAds:_rng()>0.78, score:ri(40,66),
-      adLibraryUrl:'https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q='+encodeURIComponent(company)+'&search_type=keyword_unordered' };
-    // MARKET — kept intentionally juicy
-    var medianHome=ri(32,98)*10000+ri(0,9)*1000; // $320k–$990k
-    var pop=ri(85,620)*1000;
-    var households=Math.round(pop/2.5);
-    var tam=Math.round(households*rf(0.02,0.05)*medianHome*rf(0.06,0.11)/1e6); // $M serviceable/yr, rough + rosy
-    var market={ medianHome:medianHome, population:pop, households:households, tam:tam,
-      adOpportunity:ri(84,96), demand:pick(['High','Very High','Very High','Red-hot']) };
-    var audit={ company:company, website:website, city:city, niche:niche, status:'running', progress:0,
-      gmb:gmb, reviews:reviews, websiteG:wg, social:social, market:market, sources:{},
-      overall:{ score:0 }, siteUrl:normalizeUrl(website) };
-    audit.stages=[
-      {k:'gmb',label:'Scanning Google Business Profile',done:false},
-      {k:'rank',label:'Checking local search rankings',done:false},
-      {k:'rev',label:'Pulling reviews & reputation',done:false},
-      {k:'site',label:'Grading website & SEO',done:false},
-      {k:'social',label:'Analyzing Facebook & social',done:false},
-      {k:'mkt',label:'Sizing the local market',done:false},
-      {k:'fin',label:'Compiling authority score',done:false}
-    ];
-    recomputeOverall(audit);
-    return audit;
-  }
-  function recomputeOverall(a){ a.overall.score=clamp(Math.round(a.gmb.score*0.3 + a.reviews.score*0.2 + a.websiteG.overall*0.3 + a.social.score*0.2),46,74); a.overall.grade=gradeOf(a.overall.score); }
-
-  // modal wiring
   var auditModal=document.getElementById('auditModal'), auditPill=document.getElementById('auditPill');
   var afCompany=document.getElementById('afCompany'), afSite=document.getElementById('afSite'),
       afCity=document.getElementById('afCity'), afNiche=document.getElementById('afNiche'), afStart=document.getElementById('afStart');
@@ -1204,13 +1158,24 @@ h3{font-size:clamp(19px,2.3vw,25px);font-weight:800;letter-spacing:-.4px}
 
   function startAudit(company,website,city,niche){
     if(auditTimer) clearInterval(auditTimer);
-    AUDIT=genAudit(company,website,city,niche);
-    var hint=document.getElementById('auditHint'); hint.textContent='Auditing '+company+'… view it on the results slide'; hint.classList.add('run');
-    document.getElementById('auditOpen').lastChild.nodeValue=' Audit running…';
+    AUDIT={ company:company, website:website, city:(city||''), niche:(niche||'cabinet refacing'),
+      siteUrl:normalizeUrl(website), status:'running', progress:0, sources:{},
+      gmb:null, reviews:null, websiteG:null, market:null,
+      fbUrl:'https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q='+encodeURIComponent(company)+'&search_type=keyword_unordered',
+      stages:[
+        {k:'gmb',label:'Scanning Google Business Profile',done:false},
+        {k:'rank',label:'Checking local search rankings',done:false},
+        {k:'rev',label:'Pulling reviews & reputation',done:false},
+        {k:'site',label:'Grading website & SEO',done:false},
+        {k:'mkt',label:'Pulling local market data',done:false},
+        {k:'fin',label:'Compiling authority score',done:false}
+      ] };
+    var hint=document.getElementById('auditHint'); if(hint){ hint.textContent='Auditing '+company+'… view it on the results slide'; hint.classList.add('run'); }
+    try{ document.getElementById('auditOpen').lastChild.nodeValue=' Audit running…'; }catch(e){}
     auditPill.classList.add('show'); auditPill.classList.remove('done');
     document.getElementById('apCo').textContent=company;
     updatePill();
-    var DURATION=65000, t0=Date.now();
+    var DURATION=60000, t0=Date.now();
     auditTimer=setInterval(function(){
       var p=Math.min((Date.now()-t0)/DURATION,1);
       AUDIT.progress=Math.round(p*100);
@@ -1220,27 +1185,55 @@ h3{font-size:clamp(19px,2.3vw,25px);font-weight:800;letter-spacing:-.4px}
       if(auditSlideActive()) renderAuditSlide();
       if(p>=1) finishAudit();
     },450);
-    tryPageSpeed();      // website grade — real, client-side (fast path, no function timeout)
-    fetchRealAudit();    // GMB + reviews + market — real, via Netlify backend
+    tryPageSpeed();
+    fetchRealAudit();
     if(auditSlideActive()) renderAuditSlide();
   }
+
   function fetchRealAudit(){
     var body=JSON.stringify({company:AUDIT.company,website:AUDIT.website,city:AUDIT.city,niche:AUDIT.niche});
     AUDIT._fetch=fetch('/.netlify/functions/audit',{method:'POST',headers:{'Content-Type':'application/json'},body:body})
       .then(function(r){ if(!r.ok) throw 0; return r.json(); })
-      .then(function(j){ if(!j||!j.ok) throw 0; mergeServer(AUDIT,j);
-        if(auditSlideActive() && AUDIT.status==='done') renderAuditSlide(); })
-      .catch(function(){});   // no backend (opened as a file / GH Pages) → sim values stand, website still real via PageSpeed
+      .then(function(j){ if(!j||!j.ok) throw 0;
+        if(j.gmb) AUDIT.gmb=j.gmb;
+        if(j.reviews) AUDIT.reviews=j.reviews;
+        if(j.market) AUDIT.market=j.market;
+        AUDIT.sources=Object.assign(AUDIT.sources||{}, j.sources||{});
+        if(auditSlideActive() && AUDIT.status==='done') renderAuditSlide();
+      })
+      .catch(function(){});
     return AUDIT._fetch;
   }
-  function mergeServer(a,j){
-    if(j.gmb) a.gmb=Object.assign(a.gmb,j.gmb);
-    if(j.reviews) a.reviews=Object.assign(a.reviews,j.reviews);
-    if(j.websiteG) a.websiteG=Object.assign(a.websiteG,j.websiteG);
-    if(j.social) a.social=Object.assign(a.social,j.social);
-    if(j.market) a.market=Object.assign(a.market,j.market);
-    a.sources=j.sources||{};
-    recomputeOverall(a);
+
+  var PAGESPEED_KEY=''; // free Google key (PageSpeed Insights API, no billing) — makes website grades reliable; referrer-restrict it
+  function tryPageSpeed(){
+    var url=AUDIT.siteUrl; if(!url) return;
+    var api='https://www.googleapis.com/pagespeedonline/v5/runPagespeed?strategy=mobile&category=performance&category=seo&category=accessibility&category=best-practices&url='+encodeURIComponent(url)+(PAGESPEED_KEY?('&key='+PAGESPEED_KEY):'');
+    var ctrl=new AbortController(), to=setTimeout(function(){ctrl.abort();},25000);
+    AUDIT._ps=fetch(api,{signal:ctrl.signal}).then(function(r){return r.json();}).then(function(j){
+      clearTimeout(to);
+      var cats=j&&j.lighthouseResult&&j.lighthouseResult.categories; if(!cats||!AUDIT) return;
+      var perf=cats.performance&&cats.performance.score, seo=cats.seo&&cats.seo.score,
+          acc=cats.accessibility&&cats.accessibility.score, bp=cats['best-practices']&&cats['best-practices'].score;
+      var wg={real:true};
+      if(perf!=null) wg.mobile=Math.round(perf*100);
+      if(seo!=null) wg.seo=Math.round(seo*100);
+      if(acc!=null) wg.visual=Math.round(acc*100);
+      if(bp!=null) wg.structure=Math.round(bp*100);
+      var vals=[wg.mobile,wg.seo,wg.visual,wg.structure].filter(function(x){return x!=null;});
+      if(!vals.length) return;
+      wg.overall=Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length);
+      AUDIT.websiteG=wg; AUDIT.sources.pagespeed=true;
+      if(auditSlideActive() && AUDIT.status==='done') renderAuditSlide();
+    }).catch(function(){ clearTimeout(to); });
+    return AUDIT._ps;
+  }
+
+  function updatePill(){
+    if(!AUDIT) return;
+    var cur2=null; for(var i=0;i<AUDIT.stages.length;i++){ if(!AUDIT.stages[i].done){ cur2=AUDIT.stages[i]; break; } }
+    document.getElementById('apSt').textContent=(cur2?cur2.label+'…':'Compiling…');
+    document.getElementById('apBar').style.width=AUDIT.progress+'%';
   }
   function finishAudit(){
     if(auditTimer) clearInterval(auditTimer); auditTimer=null;
@@ -1251,40 +1244,41 @@ h3{font-size:clamp(19px,2.3vw,25px);font-weight:800;letter-spacing:-.4px}
       document.getElementById('apBar').style.width='100%';
       if(auditSlideActive()) renderAuditSlide();
     };
-    // wait for the real data (cap at 5s so the reveal never hangs live)
-    if(AUDIT._fetch){ Promise.race([AUDIT._fetch,new Promise(function(r){setTimeout(r,5000);})]).then(done); }
+    var waits=[]; if(AUDIT._fetch) waits.push(AUDIT._fetch.catch(function(){})); if(AUDIT._ps) waits.push(AUDIT._ps.catch(function(){}));
+    if(waits.length){ Promise.race([Promise.all(waits), new Promise(function(r){setTimeout(r,6000);})]).then(done); }
     else done();
   }
-  function updatePill(){
-    if(!AUDIT) return;
-    var cur2=null; for(var i=0;i<AUDIT.stages.length;i++){ if(!AUDIT.stages[i].done){ cur2=AUDIT.stages[i]; break; } }
-    document.getElementById('apSt').textContent=(cur2?cur2.label+'…':'Compiling…');
-    document.getElementById('apBar').style.width=AUDIT.progress+'%';
+
+  /* scoring — derived ONLY from real pulled signals */
+  function websiteScore(){ return (AUDIT.websiteG&&AUDIT.websiteG.overall!=null)?AUDIT.websiteG.overall:null; }
+  function gmbScore(){
+    if(!AUDIT.gmb) return null;
+    var g=AUDIT.gmb, parts=[], wts=[];
+    if(g.rating!=null){ parts.push(g.rating/5*100); wts.push(0.4); }
+    if(g.reviews!=null && g.compReviews){ parts.push(clamp(g.reviews/g.compReviews*100,0,100)); wts.push(0.35); }
+    else if(g.reviews!=null){ parts.push(clamp(g.reviews/150*100,0,100)); wts.push(0.35); }
+    if(g.rank!=null){ parts.push(clamp((11-g.rank)/10*100,0,100)); wts.push(0.25); }
+    if(!parts.length) return null;
+    var tw=0,s=0; for(var i=0;i<parts.length;i++){ s+=parts[i]*wts[i]; tw+=wts[i]; }
+    return Math.round(s/tw);
   }
-  function tryPageSpeed(){
-    var url=AUDIT.siteUrl; if(!url) return;
-    var api='https://www.googleapis.com/pagespeedonline/v5/runPagespeed?strategy=mobile&category=performance&category=seo&url='+encodeURIComponent(url);
-    var ctrl=new AbortController(), to=setTimeout(function(){ctrl.abort();},22000);
-    fetch(api,{signal:ctrl.signal}).then(function(r){return r.json();}).then(function(j){
-      clearTimeout(to);
-      var cats=j&&j.lighthouseResult&&j.lighthouseResult.categories; if(!cats||!AUDIT) return;
-      if(cats.performance&&cats.performance.score!=null) AUDIT.websiteG.mobile=clamp(Math.round(cats.performance.score*100),16,84);
-      if(cats.seo&&cats.seo.score!=null) AUDIT.websiteG.seo=clamp(Math.round(cats.seo.score*100),30,84);
-      AUDIT.websiteG.overall=Math.round((AUDIT.websiteG.visual+AUDIT.websiteG.seo+AUDIT.websiteG.structure+AUDIT.websiteG.mobile)/4);
-      AUDIT.websiteG.real=true; recomputeOverall(AUDIT);
-      if(auditSlideActive() && AUDIT.status==='done') renderAuditSlide();
-    }).catch(function(){ clearTimeout(to); });
+  function overallScore(){
+    var parts=[], ws=websiteScore(), gs=gmbScore();
+    if(ws!=null) parts.push(ws); if(gs!=null) parts.push(gs);
+    if(!parts.length) return null;
+    return Math.round(parts.reduce(function(a,b){return a+b;},0)/parts.length);
   }
 
   function ck(){ return '<svg class="si" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'; }
   function dotIc(){ return '<svg class="si" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/></svg>'; }
   function warnIc(){ return '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>'; }
+  function liveTag(on){ return on?'<span class="livetag">LIVE</span>':''; }
 
   function renderAuditSlide(){
     var host=document.getElementById('auditBody');
     if(!AUDIT){
       host.innerHTML='<div class="rep-idle"><h2 style="margin-bottom:10px">No audit running yet</h2>'+
-        '<p>Head back to the first slide and hit <b style="color:#fff">Run Local Authority Audit</b> — enter the prospect\'s company &amp; website and it\'ll fill in right here by the time you reach this slide.</p>'+
+        '<p>Head back to the first slide and hit <b style="color:#fff">Run Local Authority Audit</b> — enter the prospect\'s company &amp; website and it fills in right here by the time you reach this slide.</p>'+
         '<button class="btn audit-btn" id="repIdleBtn" style="margin:22px auto 0">Start an audit</button></div>';
       document.getElementById('repIdleBtn').addEventListener('click',function(){ auditModal.classList.add('open'); });
       return;
@@ -1292,9 +1286,9 @@ h3{font-size:clamp(19px,2.3vw,25px);font-weight:800;letter-spacing:-.4px}
     if(AUDIT.status!=='done'){
       var st=AUDIT.stages.map(function(s){ return '<div class="rep-stage'+(s.done?' done':'')+'">'+(s.done?ck():dotIc())+s.label+'</div>'; }).join('');
       host.innerHTML='<div class="rep-pending"><div class="spin"></div><h2>Analyzing '+esc(AUDIT.company)+'…</h2>'+
-        '<p>Scanning their local presence across Google, their website, social, and the local market.</p>'+
+        '<p>Pulling live data from Google, their website, and local market records.</p>'+
         '<div class="rep-stages">'+st+'</div><div class="rep-pct">'+AUDIT.progress+'% complete</div>'+
-        '<button class="btn ghost" id="repReveal" style="margin:20px auto 0">Reveal results now →</button></div>';
+        '<button class="btn ghost" id="repReveal" style="margin:20px auto 0">Reveal results now &rarr;</button></div>';
       document.getElementById('repReveal').addEventListener('click',finishAudit);
       return;
     }
@@ -1302,78 +1296,91 @@ h3{font-size:clamp(19px,2.3vw,25px);font-weight:800;letter-spacing:-.4px}
   }
 
   function renderReport(host){
-    var a=AUDIT, g=a.overall.grade, m=a.market, w=a.websiteG;
-    var ringColor = a.overall.score>=75?'#27d08a':a.overall.score>=62?'#5c8bff':a.overall.score>=52?'#f5bb3f':'#ff5468';
-    var C=414.7, off=C*(1-a.overall.score/100);
-    var topCompMult=Math.max(2,Math.round(a.gmb.compReviews/Math.max(a.gmb.reviews,1)));
-    host.innerHTML=
-    '<div class="rep-top">'+
-      '<div class="ring-wrap"><svg width="148" height="148"><circle cx="74" cy="74" r="66" fill="none" stroke="var(--line)" stroke-width="12"/>'+
-        '<circle cx="74" cy="74" r="66" fill="none" stroke="'+ringColor+'" stroke-width="12" stroke-linecap="round" stroke-dasharray="'+C+'" stroke-dashoffset="'+C+'" id="repRing"/></svg>'+
-        '<div class="rg"><div class="lg" style="color:'+ringColor+'">'+g+'</div><div class="sc">'+a.overall.score+'/100</div></div></div>'+
-      '<div class="rep-id"><h2>'+esc(a.company)+'</h2>'+(a.siteUrl?'<div class="web">'+esc(a.website.replace(/^https?:\/\//,''))+'</div>':'')+
-        '<div class="rank">Currently the <b>#'+a.gmb.rank+'</b> most visible '+esc(a.niche)+' business of ~<b>'+ri_fixed(a)+'</b> in '+esc(a.city)+'.</div>'+
-        '<div class="rep-verdict">You\'re an established name — but you\'re being <b style="color:#fff">out-marketed locally</b>. Your presence has clear gaps competitors are already exploiting. The good news: in a market this strong, that\'s very fixable.</div>'+
-      '</div></div>'+
+    var a=AUDIT, g=a.gmb, rv=a.reviews, w=a.websiteG, m=a.market;
+    var overall=overallScore();
+    var any = g||rv||w||m;
+    if(!any){
+      host.innerHTML='<div class="rep-idle"><h2 style="margin-bottom:10px">Couldn\'t pull live data for '+esc(a.company)+'</h2>'+
+        '<p>No live source responded — check the website URL, or that the Google Places &amp; Census API keys are set on the backend. Nothing is shown unless it\'s real.</p></div>';
+      return;
+    }
+    var html='';
+    // header + ring
+    html+='<div class="rep-top">';
+    if(overall!=null){
+      var ringColor=overall>=75?'#27d08a':overall>=62?'#5c8bff':overall>=52?'#f5bb3f':'#ff5468';
+      var C=414.7;
+      html+='<div class="ring-wrap"><svg width="148" height="148"><circle cx="74" cy="74" r="66" fill="none" stroke="var(--line)" stroke-width="12"/>'+
+        '<circle cx="74" cy="74" r="66" fill="none" stroke="'+ringColor+'" stroke-width="12" stroke-linecap="round" stroke-dasharray="'+C+'" stroke-dashoffset="'+C+'" id="repRing" data-off="'+(C*(1-overall/100))+'"/></svg>'+
+        '<div class="rg"><div class="lg" style="color:'+ringColor+'">'+gradeOf(overall)+'</div><div class="sc">'+overall+'/100</div></div></div>';
+    }
+    html+='<div class="rep-id"><h2>'+esc(a.company)+'</h2>'+(a.siteUrl?'<div class="web">'+esc(a.website.replace(/^https?:\/\//,''))+'</div>':'');
+    if(g&&g.rank!=null) html+='<div class="rank">Ranked <b>#'+g.rank+'</b> for "'+esc(a.niche)+(a.city?(' in '+a.city):'')+'" on Google Maps.</div>';
+    html+='<div class="rep-verdict">'+verdictLine()+'</div></div></div>';
 
-    // MARKET OPPORTUNITY banner
-    '<div class="rcard2" style="margin-top:22px;border-color:rgba(39,208,138,.4);background:linear-gradient(180deg,rgba(39,208,138,.07),var(--panel2))">'+
-      '<div class="rh"><div class="rt"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Market Opportunity — '+esc(a.city)+liveTag(a.sources&&a.sources.census)+'</div><span class="gpill g-a">'+m.adOpportunity+'/100</span></div>'+
-      '<div class="rep-grid" style="margin-top:4px;gap:14px">'+
-        mkt('Median home value',money(m.medianHome))+
-        mkt('Local population',(m.population/1000).toFixed(0)+'k')+
-        mkt('Est. serviceable market / yr',money(m.tam)+'M')+
-        mkt('Local demand',m.demand)+
-      '</div>'+
-      '<div class="finding" style="color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="#27d08a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>This is a <b style="color:#fff">goldmine market</b> — high home values and strong demand — and right now it\'s wide open because you\'re not advertising into it.</div>'+
-    '</div>'+
+    // MARKET (real census only)
+    if(m){
+      var label = m.medianHome>=600000?'Premium market':m.medianHome>=400000?'High-value market':m.medianHome>=250000?'Solid market':'Value market';
+      html+='<div class="rcard2" style="margin-top:22px;border-color:rgba(39,208,138,.4);background:linear-gradient(180deg,rgba(39,208,138,.07),var(--panel2))">'+
+        '<div class="rh"><div class="rt"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Market — '+esc(a.city||'local area')+liveTag(true)+'</div>'+
+        (m.medianHome?'<span class="gpill g-a">'+label+'</span>':'')+'</div>'+
+        '<div class="rep-grid" style="margin-top:4px;gap:14px">'+
+          (m.medianHome?mkt('Median home value',money(m.medianHome)):'')+
+          (m.population?mkt('Population',Number(m.population).toLocaleString('en-US')):'')+
+          (m.households?mkt('Households',Number(m.households).toLocaleString('en-US')):'')+
+          (m.medianIncome?mkt('Median household income',money(m.medianIncome)):'')+
+        '</div></div>';
+    }
 
-    '<div class="rep-grid">'+
-      // GMB
-      card('Google Business Profile'+liveTag(a.sources&&a.sources.places), gIcon(),
-        row('Profile claimed', a.gmb.claimed?'Yes':'<span style="color:var(--red)">Unclaimed</span>')+
-        row('Google rating', a.gmb.rating+'★')+
-        row('Total reviews', a.gmb.reviews+' <small>(top rival ~'+a.gmb.compReviews+')</small>')+
-        row('Local rank — "'+esc(a.gmb.term)+'"', '#'+a.gmb.rank)+
-        row('Profile photos', a.gmb.photos),
-        a.gmb.score,
-        a.gmb.rank>4 ? 'You\'re ranking below several competitors for your most valuable local search.' : 'Top competitors have ~'+topCompMult+'× more reviews building trust than you.')+
-      // Reviews
-      card('Reviews &amp; Reputation'+liveTag(a.sources&&a.sources.places), rIcon(),
-        row('Average rating', a.reviews.rating+'★')+
-        row('Review response rate', a.reviews.responseRate+'%')+
-        row('Most recent review', a.reviews.recency+' weeks ago')+
-        row('Review velocity', a.reviews.velocity),
-        a.reviews.score,
-        'Most of your reviews go unanswered and new ones are slowing — your reputation momentum is fading.')+
-      // Website
-      card('Website'+(w.real?'<span class="livetag">LIVE TESTED</span>':''), wIcon(),
-        bars([['Visual appeal',w.visual],['SEO &amp; copy',w.seo],['Lead structure',w.structure],['Mobile speed',w.mobile]]),
-        w.overall,
-        'Weak calls-to-action and slow mobile load — visitors aren\'t converting into booked estimates.')+
-      // Social
-      card('Facebook &amp; Social', sIcon(),
-        row('Facebook page', a.social.active?'Active':'<span style="color:var(--red)">Inactive</span>')+
-        row('Posts / month', a.social.postsPerMonth)+
-        row('Last post', a.social.lastPost+' weeks ago')+
-        row('Paid ads running', a.social.runningAds?'<span style="color:var(--gold)">1–2 active</span>':'<span style="color:var(--red)">None found</span>')+
-        (a.social.adLibraryUrl?'<a href="'+a.social.adLibraryUrl+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:12.5px;font-weight:700;color:var(--blue-l);text-decoration:none">See their live Facebook ads →</a>':''),
-        a.social.score,
-        'You\'re barely posting and not running paid traffic — new homeowners in your area never see you.')+
-    '</div>'+
+    html+='<div class="rep-grid">';
+    // GMB
+    if(g){
+      var gi=
+        (g.claimed!=null?row('Profile status', g.claimed?'Listed &amp; active':'<span style="color:var(--red)">Not verified</span>'):'')+
+        (g.rating!=null?row('Google rating', g.rating+'★'):'')+
+        (g.reviews!=null?row('Total reviews', g.reviews+(g.compReviews?' <small>(top rival '+g.compReviews+')</small>':'')):'')+
+        (g.rank!=null?row('Local rank — "'+esc(a.niche)+'"', '#'+g.rank):'')+
+        (g.photos!=null?row('Profile photos', g.photos):'');
+      var gf=null;
+      if(g.rank!=null && g.rank>3) gf='You\'re ranking #'+g.rank+' — below several competitors for your most valuable local search.';
+      else if(g.reviews!=null && g.compReviews && g.compReviews>g.reviews) gf='The top-ranked competitor has '+g.compReviews+' reviews to your '+g.reviews+' — a trust gap with new homeowners.';
+      html+=card('Google Business Profile'+liveTag(a.sources&&a.sources.places), gIcon(), gi, gmbScore(), gf);
+    }
+    // Reviews
+    if(rv && rv.rating!=null){
+      var ri2=
+        row('Average rating', rv.rating+'★')+
+        (rv.reviews!=null?row('Total reviews', rv.reviews):(g&&g.reviews!=null?row('Total reviews', g.reviews):''))+
+        (rv.recency!=null?row('Most recent review', rv.recency+' week'+(rv.recency===1?'':'s')+' ago'):'');
+      var rf2=(rv.recency!=null && rv.recency>6)?'Your newest review is '+rv.recency+' weeks old — review momentum has stalled.':null;
+      html+=card('Reviews &amp; Reputation'+liveTag(a.sources&&a.sources.places), rIcon(), ri2, null, rf2);
+    }
+    // Website
+    if(w){
+      var items=[]; if(w.visual!=null)items.push(['Accessibility',w.visual]); if(w.seo!=null)items.push(['SEO',w.seo]); if(w.structure!=null)items.push(['Best practices',w.structure]); if(w.mobile!=null)items.push(['Mobile speed',w.mobile]);
+      var wf=(w.mobile!=null && w.mobile<60)?'Mobile scores '+w.mobile+'/100 — a slow phone experience is quietly costing you booked estimates.':null;
+      html+=card('Website<span class="livetag">LIVE TESTED</span>', wIcon(), bars(items), w.overall, wf);
+    }
+    // Facebook — real link only, no fabricated metrics
+    html+=card('Facebook Ads', sIcon(),
+      '<div class="metric"><span class="ml">Active ads</span><span class="mv"><a href="'+a.fbUrl+'" target="_blank" rel="noopener" style="color:var(--blue-l);text-decoration:none;font-weight:800">Open live &rarr;</a></span></div>'+
+      '<div style="font-size:12.5px;color:var(--ink2);margin-top:8px;line-height:1.45">We pull their currently-running ads straight from Meta\'s public Ad Library — click to see exactly what they\'re spending on right now (or that they\'re running nothing).</div>',
+      null, null);
+    html+='</div>';
 
-    '<div class="rep-email">'+
+    // email
+    html+='<div class="rep-email">'+
       '<div><div class="re-t">Want a copy of this report?</div><div class="re-s">We\'ll email the full Local Authority Audit.</div></div>'+
       '<div class="re-form" id="reForm"><input id="reEmail" type="email" placeholder="you@email.com"><button class="btn" id="reSend">Email me the report</button></div>'+
     '</div>';
 
-    // animate ring + bars
+    host.innerHTML=html;
+
     requestAnimationFrame(function(){ setTimeout(function(){
-      var ring=document.getElementById('repRing'); if(ring) ring.style.transition='stroke-dashoffset 1.3s ease', ring.style.strokeDashoffset=off;
+      var ring=document.getElementById('repRing'); if(ring){ ring.style.transition='stroke-dashoffset 1.3s ease'; ring.style.strokeDashoffset=ring.dataset.off; }
       host.querySelectorAll('.mbar i').forEach(function(b){ b.style.width=b.dataset.w+'%'; });
     },60); });
 
-    // email wiring
     var reSend=document.getElementById('reSend'), reEmail=document.getElementById('reEmail');
     reSend.addEventListener('click',function(){
       var em=reEmail.value.trim();
@@ -1382,16 +1389,22 @@ h3{font-size:clamp(19px,2.3vw,25px);font-weight:800;letter-spacing:-.4px}
     });
     reEmail.addEventListener('keydown',function(e){ if(e.key==='Enter') reSend.click(); });
   }
-  function liveTag(on){ return on?'<span class="livetag">LIVE</span>':''; }
-  function ri_fixed(a){ _rng=mulberry32(strHash(a.company+'total')); return ri(18,34); }
+
+  function verdictLine(){
+    var o=overallScore();
+    if(o==null) return 'Live snapshot of this business\'s local presence, pulled in real time.';
+    if(o>=75) return 'Strong local presence — but there are still specific gaps a competitor could exploit.';
+    if(o>=60) return 'A decent presence that\'s leaving real ground — and revenue — on the table locally.';
+    return 'You\'re being out-marketed locally. Clear, fixable gaps are holding back your visibility.';
+  }
   function row(l,v){ return '<div class="metric"><span class="ml">'+l+'</span><span class="mv">'+v+'</span></div>'; }
   function mkt(l,v){ return '<div class="metric" style="border:none;padding:4px 0"><span class="ml">'+l+'</span><span class="mv" style="font-size:16px">'+v+'</span></div>'; }
   function bars(items){ return items.map(function(it){ var c=it[1]>=72?'#27d08a':it[1]>=58?'#5c8bff':it[1]>=48?'#f5bb3f':'#ff5468';
       return '<div class="mrow"><div class="ml"><span>'+it[0]+'</span><b>'+it[1]+'/100</b></div><div class="mbar"><i data-w="'+it[1]+'" style="background:'+c+'"></i></div></div>'; }).join(''); }
   function card(title,icon,inner,score,finding){
-    var g=gradeOf(score);
-    return '<div class="rcard2"><div class="rh"><div class="rt">'+icon+title+'</div><span class="gpill '+gradeClass(g)+'">'+g+'</span></div>'+
-      inner+'<div class="finding">'+warnIc()+'<span>'+finding+'</span></div></div>';
+    var pill = (score!=null)?('<span class="gpill '+gradeClass(gradeOf(score))+'">'+gradeOf(score)+'</span>'):'';
+    return '<div class="rcard2"><div class="rh"><div class="rt">'+icon+title+'</div>'+pill+'</div>'+
+      inner+(finding?('<div class="finding">'+warnIc()+'<span>'+finding+'</span></div>'):'')+'</div>';
   }
   function gIcon(){ return '<svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>'; }
   function rIcon(){ return '<svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"/></svg>'; }
@@ -1400,12 +1413,17 @@ h3{font-size:clamp(19px,2.3vw,25px);font-weight:800;letter-spacing:-.4px}
 
   function sendReport(email){
     var form=document.getElementById('reForm');
-    try{ var k='audit_emails'; var l=JSON.parse(localStorage.getItem(k)||'[]'); l.push({company:AUDIT.company,email:email,at:Date.now()}); localStorage.setItem(k,JSON.stringify(l)); }catch(e){}
-    if(EMAIL_ENDPOINT){
-      fetch(EMAIL_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,company:AUDIT.company,website:AUDIT.website,score:AUDIT.overall.score,grade:AUDIT.overall.grade})}).catch(function(){});
-    }
-    form.innerHTML='<div class="re-ok"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Report on its way to '+esc(email)+'</div>';
+    form.innerHTML='<div class="re-ok">Sending…</div>';
+    var payload={ toEmail:email, company:AUDIT.company, website:AUDIT.website, city:AUDIT.city, niche:AUDIT.niche,
+      overall:overallScore(), grade:(overallScore()!=null?gradeOf(overallScore()):null),
+      gmb:AUDIT.gmb, reviews:AUDIT.reviews, website_g:AUDIT.websiteG, market:AUDIT.market, fbUrl:AUDIT.fbUrl, sources:AUDIT.sources };
+    fetch('/.netlify/functions/send-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+      .then(function(r){return r.json();}).then(function(j){
+        if(j&&j.ok){ form.innerHTML='<div class="re-ok"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Report sent to '+esc(email)+'</div>'; }
+        else throw 0;
+      }).catch(function(){ form.innerHTML='<div class="re-ok" style="color:var(--red)">Couldn\'t send — try again</div>'; });
   }
+
 
   onEnter(0);
 })();
