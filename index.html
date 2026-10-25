@@ -1,0 +1,1037 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Jitter Growth — The System</title>
+<meta name="description" content="How Jitter Growth fills your calendar with qualified, ready-to-buy homeowners.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070b16; --bg2:#0b1222; --panel:#111a2e; --panel2:#0e1627;
+  --line:#1e2b45; --line2:#283356;
+  --ink:#eef2fb; --ink2:#aeb9d2; --muted:#7a86a2;
+  --blue:#2f6bff; --blue-l:#5c8bff; --blue-d:#1b53e0; --blue-glow:rgba(47,107,255,.45);
+  --gold:#f5bb3f; --green:#27d08a; --red:#ff5468;
+  --shadow:0 30px 80px -30px rgba(0,0,0,.8);
+  --radius:20px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  background:var(--bg); color:var(--ink);
+  overflow:hidden; -webkit-font-smoothing:antialiased;
+}
+/* ====== DECK ENGINE ====== */
+.deck{position:fixed;inset:0}
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;justify-content:center;
+  padding:clamp(28px,5vw,80px);
+  opacity:0;visibility:hidden;transform:translateX(40px) scale(.99);
+  transition:opacity .5s ease,transform .5s ease,visibility .5s;
+  overflow-y:auto;
+}
+.slide.active{opacity:1;visibility:visible;transform:none;z-index:2}
+.slide.prev{transform:translateX(-40px) scale(.99)}
+.slide::-webkit-scrollbar{width:7px}
+.slide::-webkit-scrollbar-thumb{background:var(--line);border-radius:10px}
+.wrap{width:100%;max-width:1160px;margin:0 auto}
+.wrap.wide{max-width:1320px}
+
+/* backgrounds */
+.slide{background:
+  radial-gradient(900px 480px at 78% -8%,rgba(47,107,255,.14),transparent 60%),
+  radial-gradient(700px 500px at 10% 110%,rgba(47,107,255,.10),transparent 60%),
+  linear-gradient(180deg,var(--bg),var(--bg2));}
+.slide.dark{background:
+  radial-gradient(1200px 700px at 50% 0%,rgba(47,107,255,.22),transparent 62%),
+  linear-gradient(180deg,#070b16,#060910);}
+
+/* ====== LOGO ====== */
+.logo-lockup{height:42px;width:auto}
+.logo-mark{height:40px;width:auto}
+.bracket-j{display:inline-block}
+
+/* ====== TYPE ====== */
+.kicker{display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:800;letter-spacing:1.4px;
+  text-transform:uppercase;color:var(--blue-l);margin-bottom:20px}
+.kicker .num{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;
+  background:rgba(47,107,255,.14);border:1px solid rgba(47,107,255,.4);color:#fff;font-size:13px;box-shadow:0 0 18px var(--blue-glow)}
+.kicker .dot{width:8px;height:8px;border-radius:50%;background:var(--blue);box-shadow:0 0 10px 2px var(--blue-glow)}
+h1{font-size:clamp(34px,6vw,70px);font-weight:900;line-height:1.02;letter-spacing:-1.8px}
+h2{font-size:clamp(28px,4.4vw,50px);font-weight:900;line-height:1.05;letter-spacing:-1.2px;margin-bottom:16px}
+h3{font-size:clamp(19px,2.3vw,25px);font-weight:800;letter-spacing:-.4px}
+.lead{font-size:clamp(16px,1.9vw,20px);line-height:1.5;color:var(--ink2);font-weight:450;max-width:720px}
+.hl{color:var(--blue-l)} .hl-g{color:var(--gold)} .grn{color:var(--green)} .rd{color:var(--red)}
+.mono{font-variant-numeric:tabular-nums}
+
+/* ====== COVER ====== */
+.cover{align-items:flex-start}
+.cover .tag{margin-top:26px;font-size:clamp(17px,2.2vw,23px);color:var(--ink2);font-weight:500;max-width:680px;line-height:1.45}
+.cover h1{margin-top:10px}
+.cover .present{margin-top:46px;display:flex;align-items:center;gap:14px;color:var(--muted);font-size:14px;font-weight:600}
+.cover .present .ln{width:46px;height:1px;background:var(--line)}
+.glowmark{position:absolute;right:-60px;top:50%;transform:translateY(-50%);height:min(78vh,760px);opacity:.07;pointer-events:none}
+
+/* ====== PIPELINE (overview) ====== */
+.pipe{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:40px}
+.pstep{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:18px;
+  padding:26px 22px;cursor:pointer;position:relative;transition:transform .2s,border-color .2s,box-shadow .2s;overflow:hidden}
+.pstep:hover{transform:translateY(-6px);border-color:rgba(47,107,255,.6);box-shadow:0 24px 50px -24px var(--blue-glow)}
+.pstep .pn{font-size:13px;font-weight:800;color:var(--blue-l);letter-spacing:1px}
+.pstep .pic{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;margin:14px 0 16px;
+  background:rgba(47,107,255,.12);border:1px solid rgba(47,107,255,.3)}
+.pstep .pic svg{width:26px;height:26px;stroke:var(--blue-l)}
+.pstep h3{margin-bottom:8px}
+.pstep p{font-size:14px;color:var(--ink2);line-height:1.45}
+.pstep .go{margin-top:16px;font-size:12.5px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:6px;opacity:0;transition:.2s}
+.pstep:hover .go{opacity:1;color:var(--blue-l)}
+.pstep::after{content:"";position:absolute;right:0;top:0;width:3px;height:0;background:var(--blue);transition:height .3s}
+.pstep:hover::after{height:100%}
+
+/* generic cards */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}
+.grid2.top{align-items:start}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:18px;padding:26px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
+
+/* bullets */
+.blist{display:flex;flex-direction:column;gap:14px;margin-top:22px}
+.bl{display:flex;gap:14px;align-items:flex-start}
+.bl .bi{flex-shrink:0;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;margin-top:1px;
+  background:rgba(47,107,255,.13);border:1px solid rgba(47,107,255,.34)}
+.bl .bi svg{width:15px;height:15px;stroke:var(--blue-l)}
+.bl .bt{font-size:16px;line-height:1.45;color:var(--ink)}
+.bl .bt b{color:#fff}
+.bl .bt span{color:var(--ink2)}
+
+/* ====== AI TARGETING ====== */
+.target-wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:26px;margin-top:26px;align-items:start}
+.scanbox{background:var(--panel2);border:1px solid var(--line);border-radius:18px;padding:22px;position:relative;overflow:hidden}
+.scanbox h3{margin-bottom:4px}
+.scan-sub{font-size:13.5px;color:var(--muted);margin-bottom:16px}
+.feed{display:flex;flex-direction:column;gap:11px;min-height:300px}
+.lead-card{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);
+  border-radius:13px;padding:13px 15px;opacity:0;transform:translateY(8px);transition:.4s;position:relative}
+.lead-card.in{opacity:1;transform:none}
+.lead-card .av{width:42px;height:42px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;font-weight:800;font-size:15px;color:#fff}
+.lead-card .meta{flex:1;min-width:0}
+.lead-card .nm{font-weight:800;font-size:15px}
+.lead-card .de{font-size:12.5px;color:var(--ink2);margin-top:2px;line-height:1.35}
+.verdict{flex-shrink:0;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;opacity:0;transform:scale(.4);transition:.35s .2s}
+.lead-card.judged .verdict{opacity:1;transform:none}
+.verdict.ok{background:rgba(39,208,138,.16);border:1px solid var(--green)}
+.verdict.no{background:rgba(255,84,104,.14);border:1px solid var(--red)}
+.verdict svg{width:17px;height:17px}
+.lead-card.pass{border-color:rgba(39,208,138,.45)}
+.lead-card.fail{opacity:.5}
+.lead-card.fail.in{opacity:.5}
+.tag-chip{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;margin-left:6px;vertical-align:middle}
+.tag-chip.g{background:rgba(39,208,138,.15);color:var(--green)}
+.tag-chip.r{background:rgba(255,84,104,.15);color:var(--red)}
+.scanline{position:absolute;left:0;right:0;height:60px;background:linear-gradient(180deg,transparent,rgba(47,107,255,.18),transparent);
+  top:-80px;opacity:0;pointer-events:none}
+.scanning .scanline{animation:scan 1.6s ease-in-out}
+@keyframes scan{0%{top:-80px;opacity:1}100%{top:360px;opacity:0}}
+
+.zipbox{background:var(--panel2);border:1px solid var(--line);border-radius:18px;padding:22px}
+.zipbox h3{margin-bottom:4px}
+.zipgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.zip{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 14px;transition:.35s;position:relative}
+.zip .z{font-weight:800;font-size:15px}
+.zip .c{font-size:12px;color:var(--muted);margin-top:2px}
+.zip .v{font-size:12.5px;font-weight:700;color:var(--ink2);margin-top:6px}
+.zip.hot{border-color:var(--blue);background:linear-gradient(180deg,rgba(47,107,255,.14),var(--panel));box-shadow:0 0 24px -6px var(--blue-glow)}
+.zip.hot .v{color:var(--blue-l)}
+.zip.cold{opacity:.4}
+.zip .pin{position:absolute;top:10px;right:11px;width:8px;height:8px;border-radius:50%;background:var(--line)}
+.zip.hot .pin{background:var(--blue);box-shadow:0 0 8px 2px var(--blue-glow);animation:pp 1.4s infinite}
+@keyframes pp{0%,100%{box-shadow:0 0 6px 1px var(--blue-glow)}50%{box-shadow:0 0 12px 4px var(--blue-glow)}}
+
+.btn{display:inline-flex;align-items:center;gap:9px;background:var(--blue);color:#fff;border:none;cursor:pointer;
+  font-family:inherit;font-weight:700;font-size:15px;padding:13px 22px;border-radius:12px;
+  box-shadow:0 14px 30px -12px var(--blue-glow);transition:transform .12s,box-shadow .18s,background .15s}
+.btn:hover{background:var(--blue-d);transform:translateY(-2px)}
+.btn:active{transform:translateY(0)}
+.btn.ghost{background:transparent;border:1.5px solid var(--line);box-shadow:none;color:var(--ink)}
+.btn.ghost:hover{border-color:var(--blue);background:rgba(47,107,255,.08)}
+.btn:disabled{opacity:.4;cursor:default;transform:none}
+.btn svg{width:17px;height:17px}
+
+/* ====== ADS ====== */
+.ads-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:30px}
+.adbtn{text-align:left;background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+  border-radius:16px;padding:22px;cursor:pointer;transition:.2s;position:relative;overflow:hidden;color:var(--ink);font-family:inherit}
+.adbtn:hover{transform:translateY(-5px);border-color:var(--blue);box-shadow:0 22px 44px -22px var(--blue-glow)}
+.adbtn .play{width:46px;height:46px;border-radius:12px;background:rgba(47,107,255,.14);border:1px solid rgba(47,107,255,.38);
+  display:grid;place-items:center;margin-bottom:16px;transition:.2s}
+.adbtn:hover .play{background:var(--blue);border-color:var(--blue)}
+.adbtn .play svg{width:20px;height:20px;fill:var(--blue-l);transition:.2s}
+.adbtn:hover .play svg{fill:#fff}
+.adbtn .at{font-weight:800;font-size:18px;letter-spacing:-.3px}
+.adbtn .ad{font-size:13px;color:var(--ink2);margin-top:6px;line-height:1.4}
+.adbtn .tagn{position:absolute;top:16px;right:18px;font-size:11px;font-weight:800;color:var(--muted);letter-spacing:1px}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(4,7,14,.82);backdrop-filter:blur(8px);z-index:200;
+  display:none;align-items:center;justify-content:center;padding:40px}
+.modal.open{display:flex}
+.modal-inner{width:min(900px,92vw);background:var(--panel);border:1px solid var(--line);border-radius:20px;
+  overflow:hidden;box-shadow:var(--shadow);animation:pop .3s ease}
+@keyframes pop{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line)}
+.modal-head .mt{font-weight:800;font-size:18px}
+.modal-head .ms{font-size:13px;color:var(--muted);margin-top:2px}
+.modal-x{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);
+  cursor:pointer;font-size:20px;display:grid;place-items:center;transition:.15s}
+.modal-x:hover{border-color:var(--red);color:var(--red)}
+.vid-stage{aspect-ratio:16/9;background:#05080f;display:grid;place-items:center;position:relative}
+.vid-stage video{width:100%;height:100%;object-fit:contain;background:#05080f}
+.vid-ph{text-align:center;color:var(--muted);padding:30px}
+.vid-ph .big{font-size:17px;font-weight:700;color:var(--ink2);margin-bottom:8px}
+.vid-ph code{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:4px 9px;color:var(--blue-l);font-size:13px}
+
+/* ====== QUALIFICATION SURVEY ====== */
+.q-grid{display:grid;grid-template-columns:1fr 1fr;gap:34px;margin-top:22px;align-items:start}
+.surveycard{background:#fff;border-radius:22px;overflow:hidden;box-shadow:var(--shadow);color:#0d1117;min-height:430px;display:flex;flex-direction:column}
+.sc-bar{height:6px;background:#eef0f3}
+.sc-bar i{display:block;height:100%;width:20%;background:var(--blue);transition:width .4s cubic-bezier(.4,0,.2,1)}
+.sc-body{padding:30px 30px 26px;flex:1;display:flex;flex-direction:column}
+.sc-step{display:none;flex:1;flex-direction:column}
+.sc-step.on{display:flex;animation:sfade .35s ease}
+@keyframes sfade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.sc-q{font-size:21px;font-weight:800;color:#0d1117;letter-spacing:-.4px;margin-bottom:5px}
+.sc-sub{font-size:13.5px;color:#6b7280;margin-bottom:20px}
+.sc-opt{display:flex;align-items:center;gap:13px;border:1.5px solid #e6e8ec;border-radius:13px;padding:15px 16px;cursor:pointer;
+  font-weight:600;font-size:16px;color:#0d1117;transition:.14s;margin-bottom:11px;background:#fff}
+.sc-opt:hover{border-color:#cdddff;background:#f7faff}
+.sc-opt .k{width:26px;height:26px;border-radius:7px;background:#f1f3f7;display:grid;place-items:center;font-size:13px;font-weight:800;color:#6b7280}
+.sc-opt.sel{border-color:var(--blue);background:#eef3ff;box-shadow:0 0 0 3px rgba(47,107,255,.12)}
+.sc-field{margin-bottom:14px}
+.sc-field label{display:block;font-size:12.5px;font-weight:800;color:#2b3240;margin-bottom:6px}
+.sc-field input{width:100%;border:1.5px solid #e6e8ec;border-radius:11px;padding:13px 14px;font-size:15.5px;font-family:inherit;color:#0d1117}
+.sc-field input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(47,107,255,.13)}
+.sc-cta{margin-top:auto;display:flex;gap:10px;align-items:center;padding-top:8px}
+.sc-cta .go{background:var(--blue);color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:800;font-size:15px;
+  padding:13px 22px;border-radius:11px;flex:1;transition:.14s}
+.sc-cta .go:hover{background:var(--blue-d)}
+.sc-cta .go:disabled{opacity:.4;cursor:default}
+.sc-back{background:none;border:none;color:#6b7280;font-family:inherit;font-weight:700;font-size:13.5px;cursor:pointer;padding:8px}
+.sc-micro{display:flex;align-items:center;gap:7px;font-size:12px;color:#8b93a7;margin-top:14px;font-weight:600}
+/* dq + thankyou screens */
+.sc-end{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
+.sc-end .ic{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;margin-bottom:10px}
+.sc-end.dq .ic{background:#fff4e6;border:1px solid #f0b357}
+.sc-end.ty .ic{background:#e9fbf3;border:1px solid var(--green)}
+.sc-end h4{font-size:22px;font-weight:800;color:#0d1117}
+.sc-end p{font-size:14px;color:#6b7280;max-width:300px;line-height:1.5}
+/* mini calendar */
+.mcal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:4px 0 6px}
+.mcal .dw{font-size:10px;font-weight:800;color:#8b93a7;text-align:center;padding:3px 0}
+.mcal .cd{aspect-ratio:1;border:1px solid #e6e8ec;border-radius:8px;display:grid;place-items:center;font-size:13px;font-weight:700;
+  color:#0d1117;cursor:pointer;transition:.12s}
+.mcal .cd.off{color:#c3c9d4;cursor:default;border-color:transparent}
+.mcal .cd.av:hover{border-color:var(--blue);background:#eef3ff}
+.mcal .cd.sel{background:var(--blue);color:#fff;border-color:var(--blue)}
+.mslots{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:4px}
+.mslot{border:1.5px solid #e6e8ec;border-radius:9px;padding:9px 4px;font-size:13px;font-weight:700;color:#0d1117;cursor:pointer;text-align:center;transition:.12s}
+.mslot:hover{border-color:#cdddff;background:#f7faff}
+.mslot.sel{border-color:var(--blue);background:var(--blue);color:#fff}
+.q-note{margin-top:18px;font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.q-note svg{width:16px;height:16px;stroke:var(--gold);flex-shrink:0}
+
+/* ====== SET CALL ====== */
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:28px}
+.stepcard{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:18px;padding:26px;position:relative}
+.stepcard .badge{position:absolute;top:-13px;left:24px;background:var(--blue);color:#fff;font-size:12px;font-weight:800;
+  padding:5px 13px;border-radius:8px;letter-spacing:.5px;box-shadow:0 8px 20px -8px var(--blue-glow)}
+.stepcard h3{margin:6px 0 14px}
+.chk{display:flex;flex-direction:column;gap:11px}
+.chk .ci{display:flex;gap:11px;align-items:flex-start;font-size:14.5px;color:var(--ink2);line-height:1.4}
+.chk .ci svg{width:19px;height:19px;flex-shrink:0;margin-top:1px;stroke:var(--green)}
+.chk .ci b{color:#fff;font-weight:700}
+
+/* ====== NURTURE TIMELINE ====== */
+.tl{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:46px;position:relative}
+.tl::before{content:"";position:absolute;top:26px;left:8%;right:8%;height:2px;background:linear-gradient(90deg,var(--blue),var(--blue-l))}
+.tlnode{text-align:center;position:relative;padding:0 14px}
+.tldot{width:54px;height:54px;border-radius:50%;margin:0 auto 20px;display:grid;place-items:center;position:relative;z-index:1;
+  background:var(--panel);border:2px solid var(--blue);box-shadow:0 0 24px -4px var(--blue-glow)}
+.tldot svg{width:24px;height:24px;stroke:var(--blue-l)}
+.tlnode .tw{font-size:12px;font-weight:800;color:var(--blue-l);letter-spacing:1px;text-transform:uppercase}
+.tlnode h3{font-size:18px;margin:7px 0 7px}
+.tlnode p{font-size:13.5px;color:var(--ink2);line-height:1.45}
+.tlnode.resched .tldot{border-color:var(--gold);box-shadow:0 0 24px -4px rgba(245,187,63,.5)}
+.tlnode.resched .tldot svg{stroke:var(--gold)}
+.tlnode.resched .tw{color:var(--gold)}
+
+/* ====== STATS ====== */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:40px}
+.stat{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:20px;
+  padding:38px 28px;text-align:center;position:relative;overflow:hidden}
+.stat::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--blue),var(--blue-l))}
+.stat .sv{font-size:clamp(44px,6vw,72px);font-weight:900;letter-spacing:-2px;line-height:1;
+  background:linear-gradient(180deg,#fff,var(--blue-l));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.stat .sl{font-size:15px;font-weight:700;color:var(--ink);margin-top:14px}
+.stat .sd{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.4}
+
+/* ====== DASHBOARD MOCK ====== */
+.dash{margin-top:26px;background:var(--panel2);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+.dash-top{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
+.dash-top .dots{display:flex;gap:6px}.dash-top .dots i{width:11px;height:11px;border-radius:50%;background:var(--line)}
+.dash-url{flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:12.5px;color:var(--muted);margin-left:8px}
+.dash-body{display:grid;grid-template-columns:200px 1fr;min-height:360px}
+.dash-nav{border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:4px;background:var(--panel)}
+.dnav{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:10px;font-size:14px;font-weight:600;color:var(--ink2);cursor:pointer;transition:.14s;border:none;background:none;font-family:inherit;text-align:left;width:100%}
+.dnav svg{width:17px;height:17px;stroke:currentColor}
+.dnav:hover{background:var(--panel2);color:var(--ink)}
+.dnav.on{background:rgba(47,107,255,.14);color:#fff}
+.dnav.on svg{stroke:var(--blue-l)}
+.dash-main{padding:22px 24px}
+.dpane{display:none;animation:sfade .3s}.dpane.on{display:block}
+.dpane h4{font-size:16px;margin-bottom:16px;color:var(--ink);font-weight:800}
+.drow{display:flex;align-items:center;gap:14px;padding:13px 15px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--panel)}
+.drow .av{width:38px;height:38px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;font-weight:800;color:#fff;font-size:14px}
+.drow .nm{font-weight:700;font-size:14.5px}.drow .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+.drow .st{margin-left:auto;font-size:11.5px;font-weight:800;padding:4px 10px;border-radius:20px}
+.st.new{background:rgba(47,107,255,.16);color:var(--blue-l)}
+.st.booked{background:rgba(39,208,138,.16);color:var(--green)}
+.st.nurt{background:rgba(245,187,63,.16);color:var(--gold)}
+.rec{display:flex;align-items:center;gap:14px;padding:13px 15px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--panel)}
+.rec .pl{width:38px;height:38px;border-radius:10px;background:rgba(47,107,255,.14);border:1px solid rgba(47,107,255,.34);display:grid;place-items:center;cursor:pointer;flex-shrink:0}
+.rec .pl svg{width:15px;height:15px;fill:var(--blue-l)}
+.rec .wave{flex:1;height:30px;display:flex;align-items:center;gap:2px;overflow:hidden}
+.rec .wave i{width:3px;background:var(--blue);border-radius:2px;opacity:.5}
+.rec .tm{font-size:12.5px;color:var(--muted);font-weight:700}
+.dcal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.dcal .dw{font-size:11px;font-weight:800;color:var(--muted);text-align:center}
+.dcal .cd{aspect-ratio:1.3;border:1px solid var(--line);border-radius:9px;padding:6px;font-size:12px;font-weight:700;color:var(--ink2);position:relative}
+.dcal .cd .ev{position:absolute;bottom:5px;left:5px;right:5px;height:5px;border-radius:3px;background:var(--blue)}
+.dcal .cd .ev.g{background:var(--green)}
+
+/* ====== EMAIL MOCK ====== */
+.email{max-width:720px;margin:24px auto 0;background:#fff;border-radius:16px;overflow:hidden;box-shadow:var(--shadow);color:#1a2030}
+.em-top{background:#f4f6fa;border-bottom:1px solid #e6e8ec;padding:16px 24px}
+.em-from{display:flex;align-items:center;gap:12px}
+.em-from .ea{width:40px;height:40px;border-radius:50%;background:var(--blue);display:grid;place-items:center}
+.em-from .ea svg{height:20px}
+.em-from .ef{font-weight:800;font-size:15px;color:#0d1117}
+.em-from .es{font-size:12.5px;color:#6b7280}
+.em-subj{font-size:19px;font-weight:800;color:#0d1117;margin-top:14px;letter-spacing:-.3px}
+.em-body{padding:26px 28px}
+.em-body p{font-size:14.5px;line-height:1.6;color:#2b3240;margin-bottom:16px}
+.em-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0}
+.em-num{background:#f6f8fc;border:1px solid #e6e8ec;border-radius:12px;padding:16px;text-align:center}
+.em-num .v{font-size:26px;font-weight:900;color:#0d1117;letter-spacing:-1px}
+.em-num .l{font-size:11.5px;font-weight:700;color:#6b7280;margin-top:5px;line-height:1.3}
+.em-cta{display:block;background:var(--blue);color:#fff;text-align:center;font-weight:800;font-size:15px;
+  padding:15px;border-radius:12px;text-decoration:none;margin-top:6px}
+.em-report{background:#f6f8fc;border:1px dashed #cdddff;border-radius:12px;padding:16px 18px;margin-top:16px}
+.em-report .rt{font-weight:800;font-size:14px;color:#0d1117;margin-bottom:8px}
+.em-report ul{margin-left:18px;color:#2b3240;font-size:13.5px;line-height:1.7}
+
+/* ====== END ====== */
+.end{align-items:center;justify-content:center;text-align:center}
+.end .mk{height:120px;margin-bottom:34px;animation:float 4s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.end h1{font-size:clamp(40px,7vw,86px)}
+.end .sub{margin-top:20px;font-size:clamp(17px,2.4vw,24px);color:var(--ink2);font-weight:500}
+.end .q{margin-top:40px;display:inline-flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:var(--muted)}
+
+/* ====== NAV / CHROME ====== */
+.topbar{position:fixed;top:0;left:0;right:0;height:56px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;z-index:50;pointer-events:none}
+.topbar .lg{height:22px;opacity:.9;pointer-events:auto}
+.progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--blue),var(--blue-l));z-index:60;transition:width .4s;box-shadow:0 0 12px var(--blue-glow)}
+.nav{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:14px;z-index:50;
+  background:rgba(12,18,34,.72);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:40px;padding:8px 10px}
+.nav button{width:40px;height:40px;border-radius:50%;border:none;background:var(--panel);color:var(--ink);cursor:pointer;
+  display:grid;place-items:center;transition:.15s}
+.nav button:hover{background:var(--blue);color:#fff}
+.nav button:disabled{opacity:.3;cursor:default;background:var(--panel)}
+.nav button svg{width:18px;height:18px}
+.nav .count{font-size:13px;font-weight:800;color:var(--ink2);min-width:54px;text-align:center;font-variant-numeric:tabular-nums}
+.dots{position:fixed;right:18px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:50}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--line);cursor:pointer;transition:.2s}
+.dots i.on{background:var(--blue);box-shadow:0 0 10px var(--blue-glow);transform:scale(1.25)}
+.hint{position:fixed;bottom:26px;right:24px;font-size:12px;color:var(--muted);z-index:50;font-weight:600}
+
+@media (max-width:860px){
+  .grid2,.target-wrap,.q-grid,.twocol,.pipe,.ads-grid,.stats,.tl{grid-template-columns:1fr}
+  .tl::before{display:none} .dash-body{grid-template-columns:1fr} .dash-nav{flex-direction:row;overflow-x:auto}
+  .glowmark{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="topbar">
+  <svg class="lg" viewBox="0 0 1036.8 324.6" fill="none" aria-label="Jitter Growth">
+    <path d="M86.5 47.8H47.8V276.8H86.5" stroke="#5c8bff" stroke-width="23.6" stroke-linecap="square"/>
+    <path d="M950.3 47.8H989.1V276.8H950.3" stroke="#5c8bff" stroke-width="23.6" stroke-linecap="square"/>
+    <path d="M218.72 205.1Q202.12 205.1 190.22 200.2Q178.32 195.3 172.12 185.2Q165.92 175.1 165.92 159.3V154.9H200.12V159.3Q200.12 168.5 204.62 172.8Q209.12 177.1 217.92 177.1Q226.52 177.1 231.02 171.7Q235.52 166.3 235.52 155.1V65.3H271.32V155.3Q271.32 172.3 265.12 183.4Q258.92 194.5 247.12 199.8Q235.32 205.1 218.72 205.1Z" fill="#fff"/>
+    <path d="M294.12 255.3V117.9H329.92V255.3Z" fill="#fff"/>
+    <path d="M387.32 223.7V115.7H342.72V86.3H467.72V115.7H423.12V223.7Z" fill="#fff"/>
+    <path d="M515.32 234.3V126.3H470.72V96.9H595.72V126.3H551.12V234.3Z" fill="#fff"/>
+    <path d="M609.32 234.3V96.9H722.72V124.9H645.12V150.7H712.92V178.1H645.12V206.3H724.12V234.3Z" fill="#fff"/>
+    <path d="M741.72 234.3V96.9H821.52Q836.72 96.9 846.92 102.6Q857.12 108.3 862.22 118.2Q867.32 128.1 867.32 140.3Q867.32 153.5 861.22 163.8Q855.12 174.1 844.12 179.9L871.72 234.3H831.72L808.92 185.9H777.52V234.3ZM777.52 159.3H814.52Q821.92 159.3 826.42 154.4Q830.92 149.5 830.92 141.3Q830.92 135.9 828.92 132.1Q826.92 128.3 823.32 126.2Q819.72 124.1 814.52 124.1H777.52Z" fill="#fff"/>
+  </svg>
+</div>
+
+<div class="deck" id="deck">
+
+  <!-- 1 · COVER -->
+  <section class="slide dark cover active">
+    <svg class="glowmark" viewBox="0 0 530.7 454.4" fill="none">
+      <path d="M121.1 66.9H66.9V387.5H121.1" stroke="#5c8bff" stroke-width="33" stroke-linecap="square"/>
+      <path d="M409.5 66.9H463.8V387.5H409.5" stroke="#5c8bff" stroke-width="33" stroke-linecap="square"/>
+      <path d="M259.17 331.38Q235.93 331.38 219.27 324.52Q202.61 317.66 193.93 303.52Q185.25 289.38 185.25 267.26V261.1H233.13V267.26Q233.13 280.14 239.43 286.16Q245.73 292.18 258.05 292.18Q270.09 292.18 276.39 284.62Q282.69 277.06 282.69 261.38V135.66H332.81V261.66Q332.81 285.46 324.13 301Q315.45 316.54 298.93 323.96Q282.41 331.38 259.17 331.38Z" fill="#5c8bff"/>
+    </svg>
+    <div class="wrap">
+      <div class="kicker"><span class="dot"></span>The Jitter Growth System</div>
+      <h1>We fill your calendar with homeowners<br>who are <span class="hl">ready to buy right now.</span></h1>
+      <p class="tag">No shared leads. No lead forms full of tire-kickers. A done-for-you machine that finds, qualifies, books, and shows up your dream customers — so all you do is close.</p>
+      <div class="present"><span class="ln"></span>A walkthrough of exactly how it works</div>
+    </div>
+  </section>
+
+  <!-- 2 · OVERVIEW -->
+  <section class="slide">
+    <div class="wrap wide">
+      <div class="kicker"><span class="dot"></span>The System · Overview</div>
+      <h2>Four stages. One result:<br>a calendar full of <span class="hl">qualified, seated appointments.</span></h2>
+      <p class="lead">Every lead runs the exact same gauntlet before it ever hits your calendar. Click any stage to jump to it.</p>
+      <div class="pipe">
+        <div class="pstep" data-jump="3">
+          <div class="pn">01</div>
+          <div class="pic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+          <h3>Generate</h3>
+          <p>AI Meta targeting finds homeowners who want this exact project — right now — and have the budget.</p>
+          <div class="go">Open →</div>
+        </div>
+        <div class="pstep" data-jump="5">
+          <div class="pn">02</div>
+          <div class="pic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+          <h3>Qualify &amp; Set</h3>
+          <p>A trained sales agent — an expert on your company — calls every lead and books only the real ones.</p>
+          <div class="go">Open →</div>
+        </div>
+        <div class="pstep" data-jump="7">
+          <div class="pn">03</div>
+          <div class="pic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+          <h3>Nurture</h3>
+          <p>We confirm every appointment with texts + a live call so both decision-makers are actually home.</p>
+          <div class="go">Open →</div>
+        </div>
+        <div class="pstep" data-jump="8">
+          <div class="pn">04</div>
+          <div class="pic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div>
+          <h3>You Close</h3>
+          <p>They walk in ready. You quote and close — and watch every number in your dashboard.</p>
+          <div class="go">Open →</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · GENERATE / AI TARGETING -->
+  <section class="slide">
+    <div class="wrap wide">
+      <div class="kicker"><span class="num">01</span>Lead Generation · AI Meta Targeting</div>
+      <h2>We don't buy leads. We <span class="hl">hunt</span> them.</h2>
+      <p class="lead">Our AI Meta targeting ignores everyone except homeowners who (1) want <b style="color:#fff">this exact project right now</b> — not four months ago — and (2) sit in the <b style="color:#fff">budget and credit band</b> you actually want to quote.</p>
+      <div class="target-wrap">
+        <div class="scanbox" id="scanbox">
+          <div class="scanline"></div>
+          <h3>Live targeting feed</h3>
+          <div class="scan-sub">Watch the AI accept the right homeowners and throw out the rest.</div>
+          <div class="feed" id="feed"></div>
+          <button class="btn" id="scanBtn" style="margin-top:18px;width:100%;justify-content:center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.2-8.5"/><path d="M21 3v6h-6"/></svg>Run AI scan
+          </button>
+        </div>
+        <div class="zipbox">
+          <h3>Affluent ZIP targeting</h3>
+          <div class="scan-sub">We only spend where the money is. Toggle the AI targeting layer.</div>
+          <div class="zipgrid" id="zipgrid"></div>
+          <button class="btn ghost" id="zipBtn" style="margin-top:16px;width:100%;justify-content:center">Show AI targeting layer</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · THE ADS -->
+  <section class="slide">
+    <div class="wrap wide">
+      <div class="kicker"><span class="num">01</span>Lead Generation · The Creative</div>
+      <h2>These are the <span class="hl">actual ads</span> we run.</h2>
+      <p class="lead">Different homeowners are at different stages of awareness — so we run a different angle for each. Click any one to watch it.</p>
+      <div class="ads-grid" id="adsGrid"></div>
+    </div>
+  </section>
+
+  <!-- 5 · QUALIFICATION -->
+  <section class="slide">
+    <div class="wrap wide">
+      <div class="kicker"><span class="num">01</span>Lead Generation · Qualification</div>
+      <h2>Every lead earns its way in.</h2>
+      <div class="q-grid">
+        <div>
+          <p class="lead">We don't run cheap "fill out this form" lead ads that flood you with tire-kickers. Every homeowner runs through a real qualification funnel <b style="color:#fff">before</b> they can even reach your calendar — it filters the project, the property, and the timeline automatically.</p>
+          <div class="blist">
+            <div class="bl"><span class="bi"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></span><div class="bt"><b>Wrong project?</b> <span>Filtered out instantly.</span></div></div>
+            <div class="bl"><span class="bi"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></span><div class="bt"><b>Wrong property type?</b> <span>Commercial &amp; mobile homes gone.</span></div></div>
+            <div class="bl"><span class="bi"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></span><div class="bt"><b>Not ready to buy?</b> <span>"3+ months" and "not sure" never get booked.</span></div></div>
+          </div>
+          <div class="q-note"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="10"/></svg>Even self-booked appointments still get verified by our team before they're confirmed.</div>
+        </div>
+        <div>
+          <div class="surveycard" id="survey">
+            <div class="sc-bar"><i id="scBar"></i></div>
+            <div class="sc-body" id="scBody"></div>
+          </div>
+          <div style="text-align:center;margin-top:12px;font-size:12.5px;color:var(--muted);font-weight:600">↑ Live demo — wired to nothing. Fill it out.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 · SET CALL -->
+  <section class="slide">
+    <div class="wrap wide">
+      <div class="kicker"><span class="num">02</span>Qualify &amp; Set · The Set Call</div>
+      <h2>A sales agent who knows your business <span class="hl">cold.</span></h2>
+      <p class="lead">Before a single call is made, we turn our internal sales agent into an expert on <b style="color:#fff">your</b> company.</p>
+      <div class="twocol">
+        <div class="stepcard">
+          <div class="badge">FIRST — WE TRAIN</div>
+          <h3>We master your company</h3>
+          <div class="chk">
+            <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><div>Your <b>services</b> and what makes you different from the shop down the street</div></div>
+            <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><div>Your rough <b>pricing structure</b> so expectations are set before you arrive</div></div>
+            <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><div>Your <b>financing options</b> — so budget is never a surprise objection</div></div>
+            <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><div>Your <b>showroom</b>, warranties, and anything else that helps them say yes</div></div>
+          </div>
+        </div>
+        <div class="stepcard">
+          <div class="badge">THEN — WE CALL</div>
+          <h3>They call every lead</h3>
+          <div class="chk">
+            <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><div>We walk each homeowner through <b>project scope</b> and their vision</div></div>
+            <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><div>We confirm <b>timeline</b> and <b>budget</b> against the exact criteria <u>you</u> set</div></div>
+            <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><div>Only if they're <b>genuinely qualified</b> do we book them straight into your calendar</div></div>
+            <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><div>You define "qualified." We never book someone you wouldn't want to drive to</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 · NURTURE -->
+  <section class="slide">
+    <div class="wrap wide">
+      <div class="kicker"><span class="num">03</span>Nurture · Show-Up Protection</div>
+      <h2>Booked isn't the goal. <span class="hl">Seated</span> is.</h2>
+      <p class="lead">A booked appointment means nothing if nobody's home. So we nurture every lead right up to the moment you knock.</p>
+      <div class="tl">
+        <div class="tlnode">
+          <div class="tldot"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+          <div class="tw">2 Days Out</div><h3>Reminder text</h3>
+          <p>A friendly confirmation text locks the appointment into their week.</p>
+        </div>
+        <div class="tlnode">
+          <div class="tldot"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+          <div class="tw">1 Day Out</div><h3>Reminder text</h3>
+          <p>A second text the day before keeps it top of mind — no surprises.</p>
+        </div>
+        <div class="tlnode">
+          <div class="tldot"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+          <div class="tw">Morning Of</div><h3>Live confirmation call</h3>
+          <p>We call to confirm they'll be home — and that <b style="color:#fff">both decision-makers</b> will be present.</p>
+        </div>
+        <div class="tlnode resched">
+          <div class="tldot"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 2v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg></div>
+          <div class="tw">If Not Both</div><h3>We reschedule</h3>
+          <p>If both aren't available, we move it rather than waste your trip.</p>
+        </div>
+      </div>
+      <p style="text-align:center;margin-top:34px;color:var(--muted);font-size:13.5px">Show-ups aren't guaranteed — people are people — but this protocol is why ours seat at the rate they do. <span class="hl-g">(We'll explain the guarantee on the call.)</span></p>
+    </div>
+  </section>
+
+  <!-- 8 · RESULTS -->
+  <section class="slide dark" data-stats="1">
+    <div class="wrap wide">
+      <div class="kicker"><span class="dot"></span>The Numbers</div>
+      <h2>Quietly, this adds up fast.</h2>
+      <div class="stats">
+        <div class="stat">
+          <div class="sv"><span class="count" data-to="37" data-suffix="%">0%</span></div>
+          <div class="sl">Average close rate on appointments</div>
+          <div class="sd">On the seated appointments we send — more than double a typical cold lead.</div>
+        </div>
+        <div class="stat">
+          <div class="sv"><span class="count" data-to="8" data-suffix="–12%">0%</span></div>
+          <div class="sl">Average cost of marketing</div>
+          <div class="sd">Total spend as a share of revenue generated — including ad spend.</div>
+        </div>
+        <div class="stat">
+          <div class="sv">$<span class="count" data-to="5" data-suffix="M+">0</span></div>
+          <div class="sl">Revenue generated in signed jobs</div>
+          <div class="sd">All-time closed revenue we've driven for our clients, and climbing.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 · BACKEND DASHBOARD -->
+  <section class="slide">
+    <div class="wrap wide">
+      <div class="kicker"><span class="num">04</span>Backend · Your Command Center</div>
+      <h2>Total transparency, 24/7.</h2>
+      <p class="lead">You get your own dashboard — every lead, every call recording, every booked appointment, live. Nothing we do is hidden from you.</p>
+      <div class="dash">
+        <div class="dash-top">
+          <div class="dots"><i></i><i></i><i></i></div>
+          <div class="dash-url">app.jittergrowth.com/your-company</div>
+        </div>
+        <div class="dash-body">
+          <div class="dash-nav">
+            <button class="dnav on" data-pane="leads"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>Leads</button>
+            <button class="dnav" data-pane="recs"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4"/></svg>Call Recordings</button>
+            <button class="dnav" data-pane="cal"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Calendar</button>
+          </div>
+          <div class="dash-main">
+            <div class="dpane on" data-pane="leads">
+              <h4>Incoming leads</h4>
+              <div class="drow"><span class="av" style="background:#6b4bff">SM</span><div><div class="nm">Steve Morris</div><div class="sub">Upstairs remodel · $40–50k · Booked Thu 2:00pm</div></div><span class="st booked">BOOKED</span></div>
+              <div class="drow"><span class="av" style="background:#2f6bff">LP</span><div><div class="nm">Linda Powell</div><div class="sub">Cabinet reface · $18–25k · Qualifying call</div></div><span class="st nurt">NURTURING</span></div>
+              <div class="drow"><span class="av" style="background:#27d08a">PG</span><div><div class="nm">Patricia Gomez</div><div class="sub">Refacing oak cabinets · 820+ credit</div></div><span class="st booked">BOOKED</span></div>
+              <div class="drow"><span class="av" style="background:#f5bb3f">RT</span><div><div class="nm">Robert Tran</div><div class="sub">Kitchen refresh · just submitted</div></div><span class="st new">NEW</span></div>
+            </div>
+            <div class="dpane" data-pane="recs">
+              <h4>Call recordings — hear exactly what we say</h4>
+              <div class="rec"><span class="pl"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span><div style="flex:1"><div class="nm" style="font-weight:700">Steve Morris — qualifying call</div><div class="wave" id="wave1"></div></div><span class="tm">6:42</span></div>
+              <div class="rec"><span class="pl"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span><div style="flex:1"><div class="nm" style="font-weight:700">Linda Powell — confirmation call</div><div class="wave" id="wave2"></div></div><span class="tm">3:18</span></div>
+              <div class="rec"><span class="pl"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span><div style="flex:1"><div class="nm" style="font-weight:700">Patricia Gomez — qualifying call</div><div class="wave" id="wave3"></div></div><span class="tm">5:07</span></div>
+            </div>
+            <div class="dpane" data-pane="cal">
+              <h4>Your booked calendar</h4>
+              <div class="dcal">
+                <div class="dw">S</div><div class="dw">M</div><div class="dw">T</div><div class="dw">W</div><div class="dw">T</div><div class="dw">F</div><div class="dw">S</div>
+              </div>
+              <div class="dcal" id="dcalGrid" style="margin-top:6px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 · MONTHLY EMAIL -->
+  <section class="slide">
+    <div class="wrap wide">
+      <div class="kicker"><span class="num">04</span>Backend · Monthly Recap</div>
+      <h2>One email a month. <span class="hl">Full honesty.</span></h2>
+      <div class="email">
+        <div class="em-top">
+          <div class="em-from">
+            <div class="ea"><svg viewBox="0 0 530.7 454.4" style="height:20px" fill="none"><path d="M121.1 66.9H66.9V387.5H121.1" stroke="#fff" stroke-width="33" stroke-linecap="square"/><path d="M409.5 66.9H463.8V387.5H409.5" stroke="#fff" stroke-width="33" stroke-linecap="square"/><path d="M259.17 331.38Q235.93 331.38 219.27 324.52Q202.61 317.66 193.93 303.52Q185.25 289.38 185.25 267.26V261.1H233.13V267.26Q233.13 280.14 239.43 286.16Q245.73 292.18 258.05 292.18Q270.09 292.18 276.39 284.62Q282.69 277.06 282.69 261.38V135.66H332.81V261.66Q332.81 285.46 324.13 301Q315.45 316.54 298.93 323.96Q282.41 331.38 259.17 331.38Z" fill="#fff"/></svg></div>
+            <div><div class="ef">Jitter Growth</div><div class="es">reports@jittergrowth.com · to you</div></div>
+          </div>
+          <div class="em-subj">Your month with Jitter — here's everything, start to finish</div>
+        </div>
+        <div class="em-body">
+          <p>Hey — here's your full recap for the month. Total transparency, including every dollar of ad spend, so you always know exactly where you stand.</p>
+          <div class="em-nums">
+            <div class="em-num"><div class="v">$6,480</div><div class="l">Total spent with us<br>(fee + ad spend)</div></div>
+            <div class="em-num"><div class="v">21</div><div class="l">Appointments run<br>this month</div></div>
+            <div class="em-num"><div class="v">8</div><div class="l">Seated &amp; qualified<br>last 7 days</div></div>
+          </div>
+          <div class="em-report">
+            <div class="rt">📋 Quick favor — your monthly report</div>
+            <p style="font-size:13.5px;color:#2b3240;margin-bottom:6px">Reply here and let us know how it's going on your end:</p>
+            <ul>
+              <li>How many did you close? (count &amp; % )</li>
+              <li>Revenue generated from this month's appointments</li>
+              <li>Any requests, feedback, or adjustments for next month</li>
+            </ul>
+          </div>
+          <a class="em-cta" href="#">Send my monthly report →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 · END -->
+  <section class="slide dark end">
+    <svg class="mk" viewBox="0 0 530.7 454.4" fill="none">
+      <path d="M121.1 66.9H66.9V387.5H121.1" stroke="#5c8bff" stroke-width="33" stroke-linecap="square"/>
+      <path d="M409.5 66.9H463.8V387.5H409.5" stroke="#5c8bff" stroke-width="33" stroke-linecap="square"/>
+      <path d="M259.17 331.38Q235.93 331.38 219.27 324.52Q202.61 317.66 193.93 303.52Q185.25 289.38 185.25 267.26V261.1H233.13V267.26Q233.13 280.14 239.43 286.16Q245.73 292.18 258.05 292.18Q270.09 292.18 276.39 284.62Q282.69 277.06 282.69 261.38V135.66H332.81V261.66Q332.81 285.46 324.13 301Q315.45 316.54 298.93 323.96Q282.41 331.38 259.17 331.38Z" fill="#fff"/>
+    </svg>
+    <div class="wrap">
+      <h1>Let's fill your calendar.</h1>
+      <div class="sub">That's the whole system — generate, qualify, nurture, close.</div>
+      <div class="q"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--blue);box-shadow:0 0 10px var(--blue-glow)"></span>Questions?</div>
+    </div>
+  </section>
+
+</div>
+
+<!-- video modal -->
+<div class="modal" id="adModal">
+  <div class="modal-inner">
+    <div class="modal-head">
+      <div><div class="mt" id="adTitle">Ad</div><div class="ms" id="adSub"></div></div>
+      <button class="modal-x" id="adClose">×</button>
+    </div>
+    <div class="vid-stage" id="vidStage"></div>
+  </div>
+</div>
+
+<!-- nav chrome -->
+<div class="nav">
+  <button id="prevBtn" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+  <span class="count" id="count">1 / 11</span>
+  <button id="nextBtn" aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+</div>
+<div class="dots" id="dotNav"></div>
+<div class="hint">← → to navigate</div>
+
+<script>
+(function(){
+  /* ============ DECK ENGINE ============ */
+  var slides=[].slice.call(document.querySelectorAll('.slide'));
+  var N=slides.length, cur=0;
+  var progress=document.getElementById('progress'), count=document.getElementById('count');
+  var prevBtn=document.getElementById('prevBtn'), nextBtn=document.getElementById('nextBtn');
+  var dotNav=document.getElementById('dotNav');
+  slides.forEach(function(_,i){ var d=document.createElement('i'); d.addEventListener('click',function(){go(i);}); dotNav.appendChild(d); });
+  var dots=[].slice.call(dotNav.children);
+
+  function go(i){
+    if(i<0||i>=N||i===cur) {return;}
+    slides[cur].classList.remove('active'); slides[cur].classList.add('prev');
+    cur=i;
+    setTimeout(function(){ slides.forEach(function(s,j){ if(j!==cur) s.classList.remove('prev'); }); },10);
+    slides[cur].classList.remove('prev'); slides[cur].classList.add('active');
+    update();
+    onEnter(cur);
+  }
+  function next(){ go(cur+1); } function prev(){ go(cur-1); }
+  function update(){
+    progress.style.width=((cur+1)/N*100)+'%';
+    count.textContent=(cur+1)+' / '+N;
+    prevBtn.disabled=cur===0; nextBtn.disabled=cur===N-1;
+    dots.forEach(function(d,i){ d.classList.toggle('on',i===cur); });
+  }
+  prevBtn.addEventListener('click',prev); nextBtn.addEventListener('click',next);
+  document.addEventListener('keydown',function(e){
+    if(document.getElementById('adModal').classList.contains('open')){ if(e.key==='Escape'){closeAd();} return; }
+    var t=e.target.tagName; if(t==='INPUT'||t==='SELECT'||t==='TEXTAREA') return;
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){ e.preventDefault(); next(); }
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){ e.preventDefault(); prev(); }
+    else if(e.key==='Home'){ go(0); } else if(e.key==='End'){ go(N-1); }
+  });
+  // jump buttons on overview
+  document.querySelectorAll('[data-jump]').forEach(function(b){
+    b.addEventListener('click',function(){ go(parseInt(b.dataset.jump,10)); });
+  });
+  update();
+
+  /* ============ 3 · AI TARGETING FEED ============ */
+  var LEADS=[
+    {n:'Steve, 29',d:'Upstairs bathroom remodel · Budget $40–50k · Credit 810–819',ok:true,c:'#6b4bff',t:'Ready now · in budget'},
+    {n:'Margie, 72',d:'Wanted a bathroom remodel — 4 months ago · pays via VA loan',ok:false,c:'#8b93a7',t:'Stale intent'},
+    {n:'Linda, 58',d:'Kitchen cabinet reface · Budget $18–25k · homeowner 12 yrs',ok:true,c:'#2f6bff',t:'Ready now · in budget'},
+    {n:'Dave, 34',d:'"Just browsing ideas" · renting the property',ok:false,c:'#8b93a7',t:'Renter · no intent'},
+    {n:'Patricia, 61',d:'Refacing dated oak cabinets · Budget $15–20k · 820+ credit',ok:true,c:'#27d08a',t:'Ready now · in budget'},
+    {n:'Mike (ABC LLC)',d:'Commercial office kitchen · 9 units',ok:false,c:'#8b93a7',t:'Commercial'}
+  ];
+  var feed=document.getElementById('feed'), scanBtn=document.getElementById('scanBtn'), scanbox=document.getElementById('scanbox');
+  var builtFeed=false;
+  function buildFeed(){
+    feed.innerHTML=''; builtFeed=true;
+    LEADS.forEach(function(L){
+      var el=document.createElement('div'); el.className='lead-card';
+      el.innerHTML='<span class="av" style="background:'+L.c+'">'+L.n.charAt(0)+'</span>'+
+        '<div class="meta"><div class="nm">'+L.n+'<span class="tag-chip '+(L.ok?'g':'r')+'">'+L.t+'</span></div><div class="de">'+L.d+'</div></div>'+
+        '<div class="verdict '+(L.ok?'ok':'no')+'">'+(L.ok?
+          '<svg viewBox="0 0 24 24" fill="none" stroke="#27d08a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>':
+          '<svg viewBox="0 0 24 24" fill="none" stroke="#ff5468" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>')+'</div>';
+      el._ok=L.ok; feed.appendChild(el);
+    });
+  }
+  function runScan(){
+    if(!builtFeed) buildFeed();
+    var cards=[].slice.call(feed.children);
+    cards.forEach(function(c){ c.classList.remove('in','judged','pass','fail'); });
+    scanBtn.disabled=true; scanbox.classList.add('scanning');
+    setTimeout(function(){ scanbox.classList.remove('scanning'); },1600);
+    cards.forEach(function(c,i){
+      setTimeout(function(){ c.classList.add('in'); },260+i*230);
+      setTimeout(function(){ c.classList.add('judged'); c.classList.add(c._ok?'pass':'fail'); },260+i*230+340);
+    });
+    setTimeout(function(){ scanBtn.disabled=false; scanBtn.querySelector('path').setAttribute('d','M21 12a9 9 0 1 1-6.2-8.5'); },260+cards.length*230+500);
+  }
+  scanBtn.addEventListener('click',runScan);
+
+  /* ZIP grid */
+  var ZIPS=[
+    {z:'90272',c:'Pacific Palisades, CA',v:'$3.2M median',hot:true},
+    {z:'33480',c:'Palm Beach, FL',v:'$2.9M median',hot:true},
+    {z:'07078',c:'Short Hills, NJ',v:'$1.6M median',hot:true},
+    {z:'48141',c:'Inkster, MI',v:'$118k median',hot:false},
+    {z:'94027',c:'Atherton, CA',v:'$7.9M median',hot:true},
+    {z:'77053',c:'Houston, TX',v:'$190k median',hot:false}
+  ];
+  var zipgrid=document.getElementById('zipgrid'), zipBtn=document.getElementById('zipBtn'), zipOn=false;
+  ZIPS.forEach(function(Z){
+    var el=document.createElement('div'); el.className='zip';
+    el.innerHTML='<span class="pin"></span><div class="z">'+Z.z+'</div><div class="c">'+Z.c+'</div><div class="v">'+Z.v+'</div>';
+    el._hot=Z.hot; zipgrid.appendChild(el);
+  });
+  zipBtn.addEventListener('click',function(){
+    zipOn=!zipOn;
+    [].slice.call(zipgrid.children).forEach(function(el,i){
+      setTimeout(function(){
+        el.classList.remove('hot','cold');
+        if(zipOn) el.classList.add(el._hot?'hot':'cold');
+      },i*70);
+    });
+    zipBtn.textContent=zipOn?'Reset targeting':'Show AI targeting layer';
+  });
+
+  /* ============ 4 · ADS ============ */
+  var ADS=[
+    {t:'Price Anchor',f:'price-anchor',tag:'A',d:'Frames the real cost of a full replacement so refacing feels like the obvious win.'},
+    {t:'Problem Aware',f:'problem-aware',tag:'B',d:'For homeowners who know their kitchen is dated and are actively looking.'},
+    {t:'Problem Unaware',f:'problem-unaware',tag:'C',d:'Plants the idea for homeowners who hadn\'t considered refacing yet.'},
+    {t:'Solution Aware',f:'solution-aware',tag:'D',d:'They know refacing exists — we prove why we\'re the one to call.'},
+    {t:'Social Proof',f:'social-proof',tag:'E',d:'Real transformations and reviews that make the decision feel safe.'},
+    {t:'Offer / Direct',f:'offer-direct',tag:'F',d:'The straight-to-the-point offer ad for the most ready-to-buy homeowners.'}
+  ];
+  var adsGrid=document.getElementById('adsGrid');
+  ADS.forEach(function(A){
+    var b=document.createElement('button'); b.className='adbtn';
+    b.innerHTML='<div class="tagn">'+A.tag+'</div><div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>'+
+      '<div class="at">'+A.t+'</div><div class="ad">'+A.d+'</div>';
+    b.addEventListener('click',function(){ openAd(A); });
+    adsGrid.appendChild(b);
+  });
+  var adModal=document.getElementById('adModal'), vidStage=document.getElementById('vidStage');
+  function openAd(A){
+    document.getElementById('adTitle').textContent=A.t+' ad';
+    document.getElementById('adSub').textContent=A.d;
+    vidStage.innerHTML='';
+    var v=document.createElement('video'); v.controls=true; v.autoplay=true; v.playsInline=true; v.src='ads/'+A.f+'.mp4';
+    v.onerror=function(){
+      vidStage.innerHTML='<div class="vid-ph"><div class="big">🎬 Drop this clip in to go live</div>Save your '+A.t+' video as <code>ads/'+A.f+'.mp4</code><br>in the repo and it\'ll play right here.</div>';
+    };
+    vidStage.appendChild(v);
+    adModal.classList.add('open');
+  }
+  function closeAd(){ adModal.classList.remove('open'); vidStage.innerHTML=''; }
+  document.getElementById('adClose').addEventListener('click',closeAd);
+  adModal.addEventListener('click',function(e){ if(e.target===adModal) closeAd(); });
+
+  /* ============ 5 · QUALIFICATION SURVEY ============ */
+  var scBody=document.getElementById('scBody'), scBar=document.getElementById('scBar');
+  var sv={project:'',home:'',timeline:'',name:'',phone:'',email:'',date:'',time:'',addr:''};
+  function bar(p){ scBar.style.width=p+'%'; }
+  function esc(s){return s.replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+  function screenProject(){
+    bar(20);
+    scBody.innerHTML=
+    '<div class="sc-step on"><div class="sc-q">What are you looking to do?</div><div class="sc-sub">So we match you with the right crew.</div>'+
+      opt('A','Cabinet Refacing','proj','refacing')+
+      opt('B','Cabinet Refinishing','proj','refinishing')+
+    '</div>';
+    wireOpts(function(v){
+      sv.project=v;
+      if(v==='refinishing'){ dq('We focus on refacing','Our crews specialize in cabinet refacing, not refinishing — so we wouldn\'t be the best fit for this one.'); }
+      else screenHome();
+    });
+  }
+  function screenHome(){
+    bar(40);
+    scBody.innerHTML=
+    '<div class="sc-step on"><div class="sc-q">What type of property is it?</div><div class="sc-sub">Step 2 of 4</div>'+
+      opt('A','Single-family home','home','single')+
+      opt('B','Commercial building','home','commercial')+
+      opt('C','Mobile / manufactured home','home','mobile')+
+      backRow('screenProject')+
+    '</div>';
+    wireOpts(function(v){
+      sv.home=v;
+      if(v==='single') screenTime();
+      else dq('Not a fit right now','We work on single-family homes. We don\'t currently take on commercial or mobile/manufactured projects.');
+    });
+  }
+  function screenTime(){
+    bar(60);
+    scBody.innerHTML=
+    '<div class="sc-step on"><div class="sc-q">When are you looking to start?</div><div class="sc-sub">Step 3 of 4</div>'+
+      opt('A','Within 45 days','time','soon')+
+      opt('B','3+ months out','time','later')+
+      opt('C','Not sure yet','time','unsure')+
+      backRow('screenHome')+
+    '</div>';
+    wireOpts(function(v){
+      sv.timeline=v;
+      if(v==='soon') screenContact();
+      else dq('Let\'s reconnect later','We only work with homeowners ready to move in the next 45 days. Come back when you\'re closer and we\'ll be here!');
+    });
+  }
+  function screenContact(){
+    bar(80);
+    scBody.innerHTML=
+    '<div class="sc-step on"><div class="sc-q">Where should we send your quote?</div><div class="sc-sub">Step 4 of 4</div>'+
+      '<div class="sc-field"><label>Full name</label><input id="svName" placeholder="Jane Homeowner"></div>'+
+      '<div class="sc-field"><label>Phone</label><input id="svPhone" placeholder="(555) 123-4567"></div>'+
+      '<div class="sc-field"><label>Email</label><input id="svEmail" placeholder="you@email.com"></div>'+
+      '<div class="sc-cta"><button class="sc-back" data-back>Back</button><button class="go" id="svGo" disabled>See my available times →</button></div>'+
+      '<div class="sc-micro"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#8b93a7" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Your info is private &amp; never shared.</div>'+
+    '</div>';
+    var nm=document.getElementById('svName'),ph=document.getElementById('svPhone'),em=document.getElementById('svEmail'),g=document.getElementById('svGo');
+    function val(){ g.disabled=!(nm.value.trim().length>1 && ph.value.replace(/\D/g,'').length>=10 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em.value.trim())); }
+    [nm,ph,em].forEach(function(i){ i.addEventListener('input',val); });
+    g.addEventListener('click',function(){ sv.name=nm.value.trim(); sv.phone=ph.value.trim(); sv.email=em.value.trim(); screenCal(); });
+    scBody.querySelector('[data-back]').addEventListener('click',screenTime);
+  }
+  function screenCal(){
+    bar(92);
+    var days=buildDays();
+    var cells=''; var dw=['S','M','T','W','T','F','S'];
+    dw.forEach(function(d){ cells+='<div class="dw">'+d+'</div>'; });
+    var first=days.firstDow;
+    for(var p=0;p<first;p++) cells+='<div class="cd off"></div>';
+    days.list.forEach(function(d){ cells+='<div class="cd '+(d.av?'av':'off')+'" data-day="'+d.day+'">'+d.day+'</div>'; });
+    scBody.innerHTML=
+    '<div class="sc-step on"><div class="sc-q">Pick a time for your free estimate</div><div class="sc-sub">'+days.label+'</div>'+
+      '<div class="mcal">'+cells+'</div>'+
+      '<div id="svSlots" style="min-height:40px"></div>'+
+      '<div class="sc-cta"><button class="sc-back" data-back>Back</button><button class="go" id="svBook" disabled>Confirm my estimate →</button></div>'+
+    '</div>';
+    var slots=document.getElementById('svSlots'), bk=document.getElementById('svBook');
+    scBody.querySelectorAll('.cd.av').forEach(function(c){
+      c.addEventListener('click',function(){
+        scBody.querySelectorAll('.cd.sel').forEach(function(x){x.classList.remove('sel');}); c.classList.add('sel');
+        sv.date=c.dataset.day; sv.time=''; bk.disabled=true;
+        slots.innerHTML='<div class="mslots">'+['9:30 AM','11:00 AM','1:00 PM','2:30 PM','4:00 PM','5:30 PM'].map(function(t){return '<div class="mslot" data-t="'+t+'">'+t+'</div>';}).join('')+'</div>';
+        slots.querySelectorAll('.mslot').forEach(function(s){
+          s.addEventListener('click',function(){ slots.querySelectorAll('.mslot.sel').forEach(function(x){x.classList.remove('sel');}); s.classList.add('sel'); sv.time=s.dataset.t; bk.disabled=false; });
+        });
+      });
+    });
+    bk.addEventListener('click',screenAddr);
+    scBody.querySelector('[data-back]').addEventListener('click',screenContact);
+  }
+  function screenAddr(){
+    bar(97);
+    scBody.innerHTML=
+    '<div class="sc-step on"><div class="sc-q">Last step — where\'s the project?</div><div class="sc-sub">So our estimator knows where to go.</div>'+
+      '<div class="sc-field"><label>Street address</label><input id="svAddr" placeholder="123 Main St"></div>'+
+      '<div class="sc-field"><label>City, State, ZIP</label><input id="svCity" placeholder="Austin, TX 78701"></div>'+
+      '<div class="sc-cta"><button class="sc-back" data-back>Back</button><button class="go" id="svFin" disabled>Book my estimate →</button></div>'+
+    '</div>';
+    var a=document.getElementById('svAddr'),c=document.getElementById('svCity'),f=document.getElementById('svFin');
+    function val(){ f.disabled=!(a.value.trim().length>3 && c.value.trim().length>3); }
+    [a,c].forEach(function(i){ i.addEventListener('input',val); });
+    f.addEventListener('click',function(){ sv.addr=a.value.trim()+', '+c.value.trim(); screenThanks(); });
+    scBody.querySelector('[data-back]').addEventListener('click',screenCal);
+  }
+  function screenThanks(){
+    bar(100);
+    scBody.innerHTML=
+    '<div class="sc-step on"><div class="sc-end ty"><div class="ic"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#27d08a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>'+
+      '<h4>You\'re booked! 🎉</h4><p>We\'ll see you '+(sv.date?('on the '+ordinal(sv.date)):'')+(sv.time?(' at '+sv.time):'')+'. A confirmation text is on its way.</p>'+
+      '<button class="btn ghost" id="svReset" style="margin-top:18px">Restart demo</button></div></div>';
+    document.getElementById('svReset').addEventListener('click',screenProject);
+  }
+  function dq(title,msg){
+    scBody.innerHTML=
+    '<div class="sc-step on"><div class="sc-end dq"><div class="ic"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#f0b357" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div>'+
+      '<h4>'+esc(title)+'</h4><p>'+esc(msg)+'</p>'+
+      '<button class="btn ghost" id="svReset" style="margin-top:18px">Restart demo</button></div></div>';
+    document.getElementById('svReset').addEventListener('click',screenProject);
+  }
+  function opt(k,label,group,val){ return '<div class="sc-opt" data-val="'+val+'"><span class="k">'+k+'</span>'+esc(label)+'</div>'; }
+  function backRow(fn){ return '<div class="sc-cta" style="margin-top:14px"><button class="sc-back" data-back>Back</button></div>'; }
+  function wireOpts(cb){
+    scBody.querySelectorAll('.sc-opt').forEach(function(o){
+      o.addEventListener('click',function(){
+        scBody.querySelectorAll('.sc-opt').forEach(function(x){x.classList.remove('sel');}); o.classList.add('sel');
+        setTimeout(function(){ cb(o.dataset.val); },240);
+      });
+    });
+    var b=scBody.querySelector('[data-back]');
+    if(b){ b.addEventListener('click',function(){
+      var q=scBody.querySelector('.sc-q').textContent;
+      if(q.indexOf('property')>=0) screenProject();
+      else if(q.indexOf('start')>=0) screenHome();
+    }); }
+  }
+  function buildDays(){
+    var now=new Date(), y=now.getFullYear(), m=now.getMonth();
+    var dim=new Date(y,m+1,0).getDate(), firstDow=new Date(y,m,1).getDay();
+    var list=[]; var td=now.getDate();
+    for(var d=1;d<=dim;d++){ var dow=new Date(y,m,d).getDay(); list.push({day:d,av:(d>=td && dow!==0 && dow!==6)}); }
+    var months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+    return {list:list,firstDow:firstDow,label:months[m]+' '+y};
+  }
+  function ordinal(n){ n=+n; var s=['th','st','nd','rd'],v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+  screenProject();
+
+  /* ============ 8 · STATS COUNT-UP ============ */
+  function animateStats(sl){
+    sl.querySelectorAll('.count').forEach(function(el){
+      if(el._done) return; el._done=true;
+      var to=+el.dataset.to, suf=el.dataset.suffix||'', t0=null, dur=1300;
+      function step(ts){ if(!t0)t0=ts; var p=Math.min((ts-t0)/dur,1); var e=1-Math.pow(1-p,3);
+        el.textContent=Math.round(e*to)+suf; if(p<1) requestAnimationFrame(step); }
+      requestAnimationFrame(step);
+    });
+  }
+
+  /* ============ 9 · DASHBOARD ============ */
+  document.querySelectorAll('.dnav').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('.dnav').forEach(function(x){x.classList.remove('on');}); b.classList.add('on');
+      document.querySelectorAll('.dpane').forEach(function(p){ p.classList.toggle('on', p.dataset.pane===b.dataset.pane); });
+    });
+  });
+  // waveforms
+  ['wave1','wave2','wave3'].forEach(function(id){
+    var w=document.getElementById(id); if(!w) return; var h='';
+    for(var i=0;i<46;i++){ h+='<i style="height:'+(6+Math.round(Math.abs(Math.sin(i*0.6))*22))+'px"></i>'; }
+    w.innerHTML=h;
+  });
+  // dashboard calendar
+  (function(){
+    var g=document.getElementById('dcalGrid'); if(!g) return;
+    var now=new Date(), y=now.getFullYear(), m=now.getMonth();
+    var firstDow=new Date(y,m,1).getDay(), dim=new Date(y,m+1,0).getDate();
+    var booked={}; [4,7,8,12,14,15,19,21,22,26].forEach(function(d){ booked[d]=(d%3===0?'g':''); });
+    var html=''; for(var p=0;p<firstDow;p++) html+='<div class="cd" style="border:none"></div>';
+    for(var d=1;d<=dim;d++){ var ev=booked.hasOwnProperty(d)?'<span class="ev '+booked[d]+'"></span>':''; html+='<div class="cd">'+d+ev+'</div>'; }
+    g.innerHTML=html;
+  })();
+
+  function onEnter(i){
+    var sl=slides[i];
+    if(sl.dataset.stats) animateStats(sl);
+    if(sl.querySelector('#feed') && !builtFeed) buildFeed();
+  }
+  onEnter(0);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "tool_name": "Read",
+  "tool_input_preview": "{\"file_path\":\"/Users/ram/jitter-pitch-deck/.playwright-mcp/s01-cover.png\"}",
+  "error": "File does not exist. Note: your current working directory is /Users/ram/jitter-pitch-deck.",
+  "timestamp": "2026-10-25T21:56:30.763Z",
+  "retry_count": 1
+}
